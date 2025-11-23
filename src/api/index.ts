@@ -7,8 +7,10 @@ import express from 'express';
 
 import { errorHandler } from './v1/middlewares/error-handler.middleware';
 import passport from './v1/middlewares/passport.middleware';
+import routes from './v1/routes';
 
 const app = express();
+const BASE_PATH = config.BASE_PATH;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -35,6 +37,8 @@ app.use(
 
 app.use(cookieParser());
 app.use(passport.initialize());
+
+app.use(BASE_PATH, routes);
 
 app.use(errorHandler);
 
