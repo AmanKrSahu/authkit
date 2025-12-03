@@ -1,3 +1,4 @@
+import { GoogleProfile } from '@core/common/interface/auth.interface';
 import { NotFoundException, UnauthorizedException } from '@core/common/utils/app-error';
 import {
   clearAuthenticationCookies,
@@ -15,6 +16,7 @@ import {
   verifyEmailSchema,
   verifyOtpSchema,
 } from '@core/common/validators/auth.validator';
+import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import { AsyncHandler } from '@core/decorator/async-handler.decorator';
 import { User } from '@prisma/client';
@@ -80,7 +82,24 @@ export class AuthController {
     });
   };
 
-  // TODO: Add OAuth Controller
+  @AsyncHandler
+  public googleCallback = async (req: Request, res: Response) => {
+    const userAgent = this.getUserAgent(req);
+    const ipAddress = this.getClientIP(req);
+    const profile = req.user as GoogleProfile;
+
+    const { accessToken, refreshToken } = await this.authService.loginWithGoogle({
+      profile,
+      userAgent,
+      ipAddress,
+    });
+
+    return setAuthenticationCookies({
+      res,
+      accessToken,
+      refreshToken,
+    }).redirect(`${config.FRONTEND_ORIGINS[1]}?status=success`);
+  };
 
   @AsyncHandler
   public login = async (req: Request, res: Response) => {

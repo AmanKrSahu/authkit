@@ -12,6 +12,7 @@ const appConfig = () => ({
 
   GOOGLE_CLIENT_ID: getEnvironment('GOOGLE_CLIENT_ID', ''),
   GOOGLE_CLIENT_SECRET: getEnvironment('GOOGLE_CLIENT_SECRET', ''),
+  GOOGLE_CALLBACK_URL: getEnvironment('GOOGLE_CALLBACK_URL', ''),
 
   JWT: {
     SECRET: getEnvironment('JWT_SECRET'),
