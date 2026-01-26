@@ -10,6 +10,11 @@ const appConfig = () => ({
 
   DATABASE_URL: getEnvironment('DATABASE_URL', ''),
 
+  REDIS: {
+    HOST: getEnvironment('REDIS_HOST', 'localhost'),
+    PORT: getEnvironment('REDIS_PORT', '6379'),
+  },
+
   GOOGLE_CLIENT_ID: getEnvironment('GOOGLE_CLIENT_ID', ''),
   GOOGLE_CLIENT_SECRET: getEnvironment('GOOGLE_CLIENT_SECRET', ''),
   GOOGLE_CALLBACK_URL: getEnvironment('GOOGLE_CALLBACK_URL', ''),

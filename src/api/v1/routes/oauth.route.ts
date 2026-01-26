@@ -14,7 +14,6 @@ oauthRoutes.get(
   })
 );
 
-// Construct success and failure URLs for Google OAuth callbacks
 const failedUrl = `${config.FRONTEND_ORIGINS[0]}/auth/sign-in?status=failure`;
 
 oauthRoutes.get(

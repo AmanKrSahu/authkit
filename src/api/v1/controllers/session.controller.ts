@@ -39,7 +39,7 @@ export class SessionController {
 
   @AsyncHandler
   public getSessionById = async (req: Request, res: Response) => {
-    const sessionId = req.params.sessionId;
+    const sessionId = req.params.sessionId as string;
     const userId = (req.user as User)?.id;
 
     if (!userId) {
@@ -85,7 +85,7 @@ export class SessionController {
   @AsyncHandler
   public revokeSessionById = async (req: Request, res: Response) => {
     const userId = (req.user as User)?.id;
-    const sessionId = req.params.sessionId;
+    const sessionId = req.params.sessionId as string;
     const currentSessionId = req.sessionId;
 
     if (!userId) {

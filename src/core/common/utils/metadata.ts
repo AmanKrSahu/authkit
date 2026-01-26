@@ -1,7 +1,9 @@
 import { BadRequestException } from '@core/common/utils/app-error';
-import { oneHourFromNow } from '@core/common/utils/date-time';
 import prisma from '@core/database/prisma';
 import type { Request } from 'express';
+
+import { ONE_HOUR } from './date-time';
+import { getCache, incrementCache } from './redis-helpers';
 
 /* ============================================================================
  * Application Metadata Utilities
@@ -66,105 +68,55 @@ export const checkForNewDevice = async (
 };
 
 /* ============================================================================
- * Rate Limiting & Abuse Prevention Utilities
+ * Rate Limiting & Abuse Prevention Utilities (Redis)
  * ============================================================================ */
 
 /**
- * Enforces rate limits for OTP-based flows (e.g., password reset)
- * based on email and IP address within a rolling one-hour window.
- *
- * Throws a BadRequestException when the limit is exceeded.
+ * Enforces rate limits based on a key derived from email and IP.
+ * Uses Redis increment and expiry.
  */
 export const checkRateLimit = async (
   email: string,
   ipAddress: string,
-  requestsPerHour: number,
+  limit: number,
   type: string = 'PASSWORD_RESET'
 ): Promise<void> => {
-  const recentAttempts = await prisma.verification.count({
-    where: {
-      identifier: email,
-      ipAddress,
-      type,
-      createdAt: {
-        gte: new Date(Date.now() - 60 * 60 * 1000), // last 1 hour
-      },
-    },
-  });
+  const key = `rate_limit:${type}:${email}:${ipAddress}`;
+  const attempts = await incrementCache(key, ONE_HOUR);
 
-  if (recentAttempts >= requestsPerHour) {
+  if (attempts > limit) {
     throw new BadRequestException('Too many attempts. Please try again later.');
   }
 };
 
 /* ============================================================================
- * MFA Rate Limiting
+ * MFA Rate Limiting (Redis)
  * ============================================================================ */
 
 /**
- * Checks if the limit of MFA login attempts has been reached.
- * Uses a single 'MFA_LOGIN_ATTEMPT' record per user/IP.
+ * Checks MFA rate limit using Redis.
+ * Returns the current attempt count.
  */
 export const checkMfaRateLimit = async (
   email: string,
   ipAddress: string,
-  requestsPerHour: number
+  limit: number
 ): Promise<number> => {
-  const attemptRecord = await prisma.verification.findFirst({
-    where: {
-      identifier: email,
-      ipAddress,
-      type: 'MFA_LOGIN_ATTEMPT',
-      value: 'MFA_LOGIN_TRACKER',
-      expiresAt: {
-        gt: new Date(),
-      },
-    },
-  });
+  const key = `mfa_limit:${email}:${ipAddress}`;
+  // We just get the value, increment happens separately if failed
+  const val = await getCache(key);
+  const attempts = val ? Number.parseInt(val, 10) : 0;
 
-  if (attemptRecord && attemptRecord.attempts >= requestsPerHour) {
+  if (attempts >= limit) {
     throw new BadRequestException('Too many MFA attempts. Please try again later.');
   }
-
-  return attemptRecord?.attempts ?? 0;
+  return attempts;
 };
 
 /**
- * Increments the attempt counter for MFA login.
- * Creates a new record if none exists or updates existing one.
+ * Increments the MFA attempt counter in Redis.
  */
 export const incrementMfaRateLimit = async (email: string, ipAddress: string): Promise<void> => {
-  const existingRecord = await prisma.verification.findFirst({
-    where: {
-      identifier: email,
-      ipAddress,
-      type: 'MFA_LOGIN_ATTEMPT',
-      value: 'MFA_LOGIN_TRACKER',
-      expiresAt: {
-        gt: new Date(),
-      },
-    },
-  });
-
-  const query = existingRecord
-    ? prisma.verification.update({
-        where: {
-          id: existingRecord.id,
-        },
-        data: {
-          attempts: existingRecord.attempts + 1,
-        },
-      })
-    : prisma.verification.create({
-        data: {
-          identifier: email,
-          value: 'MFA_LOGIN_TRACKER',
-          type: 'MFA_LOGIN_ATTEMPT',
-          expiresAt: oneHourFromNow(),
-          attempts: 1,
-          ipAddress: ipAddress,
-        },
-      });
-
-  await query;
+  const key = `mfa_limit:${email}:${ipAddress}`;
+  await incrementCache(key, ONE_HOUR);
 };

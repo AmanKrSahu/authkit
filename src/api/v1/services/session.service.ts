@@ -6,6 +6,7 @@ import type {
 } from '@core/common/interface/session.interface';
 import { AppError, NotFoundException } from '@core/common/utils/app-error';
 import { isTokenExpired } from '@core/common/utils/crypto';
+import { deleteCache, getCache } from '@core/common/utils/redis-helpers';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 
@@ -42,6 +43,23 @@ export class SessionService {
         throw new AppError('Invalid session ID', HTTPSTATUS.BAD_REQUEST);
       }
 
+      // 1. Try Redis
+      const cachedUserStr = await getCache(`session:${sessionId}`);
+      if (cachedUserStr) {
+        const user = JSON.parse(cachedUserStr);
+        // Verify user owns this session (security check)
+        if (user.id === userId) {
+          // The cached user object has sessions array
+          // Typings might be lost in JSON.parse, using any/careful check
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const session = user.sessions?.find((s: any) => s.id === sessionId);
+          if (session && !session.isRevoked && new Date(session.expiresAt) > new Date()) {
+            return session;
+          }
+        }
+      }
+
+      // 2. Fallback to DB
       const session = await prisma.session.findFirst({
         where: {
           id: sessionId,
@@ -61,6 +79,8 @@ export class SessionService {
             revokedAt: new Date(),
           },
         });
+        // Invalidate just in case
+        await deleteCache(`session:${sessionId}`);
         throw new AppError('Session expired', HTTPSTATUS.UNAUTHORIZED);
       }
 
@@ -89,6 +109,12 @@ export class SessionService {
         };
       }
 
+      // Fetch IDs to invalidate
+      const sessionsToRevoke = await prisma.session.findMany({
+        where: whereClause,
+        select: { id: true },
+      });
+
       await prisma.session.updateMany({
         where: whereClause,
         data: {
@@ -96,6 +122,11 @@ export class SessionService {
           revokedAt: new Date(),
         },
       });
+
+      // Invalidate Redis keys
+      for (const session of sessionsToRevoke) {
+        await deleteCache(`session:${session.id}`);
+      }
 
       return null;
     } catch (error) {
@@ -130,6 +161,8 @@ export class SessionService {
           revokedAt: new Date(),
         },
       });
+
+      await deleteCache(`session:${sessionId}`);
 
       return null;
     } catch (error) {

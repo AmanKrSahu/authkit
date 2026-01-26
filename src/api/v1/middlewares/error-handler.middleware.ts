@@ -2,10 +2,9 @@ import { ErrorCodeEnum } from '@core/common/enums/error-code.enum.js';
 import { AppError } from '@core/common/utils/app-error.js';
 import { HTTPSTATUS } from '@core/config/http.config.js';
 import type { ErrorRequestHandler, Response } from 'express';
-import type { z } from 'zod';
 import { ZodError } from 'zod';
 
-const formatZodError = (response: Response, error: z.ZodError) => {
+const formatZodError = (response: Response, error: ZodError) => {
   const errors = error?.issues?.map(error_ => ({
     field: error_.path.join('.'),
     message: error_.message,

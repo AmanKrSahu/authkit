@@ -1,12 +1,17 @@
+/* eslint-disable no-console */
 import 'dotenv/config';
 
 import { config } from '@core/config/app.config';
+import redis from '@core/database/redis';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
+import helmet from 'helmet';
 
 import { errorHandler } from './v1/middlewares/error-handler.middleware';
 import passport from './v1/middlewares/passport.middleware';
+import { globalRateLimiter } from './v1/middlewares/rate-limiter.middleware';
 import routes from './v1/routes';
 
 const app = express();
@@ -14,6 +19,9 @@ const BASE_PATH = config.BASE_PATH;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(helmet());
+app.use(compression());
+app.use(globalRateLimiter);
 
 app.use(
   cors({
@@ -43,6 +51,12 @@ app.use(BASE_PATH, routes);
 app.use(errorHandler);
 
 app.listen(config.PORT, async () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server listening on port ${config.PORT} in ${config.NODE_ENV}.`);
+  console.log(`Server listening on port ${config.PORT} in ${config.NODE_ENV}`);
+
+  try {
+    await redis.ping();
+    console.log(`Redis connected on port ${config.REDIS.PORT} in ${config.NODE_ENV}`);
+  } catch (error) {
+    console.error('Redis connection failed:', error);
+  }
 });

@@ -6,5 +6,4 @@ export const verifyMfaSchema = z.object({
 
 export const verifyMfaForLoginSchema = z.object({
   code: z.string().trim().min(1).max(6),
-  mfaLoginToken: z.string().trim().min(1),
 });

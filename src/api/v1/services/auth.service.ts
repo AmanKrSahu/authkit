@@ -25,7 +25,7 @@ import {
   generateSessionToken,
   isTokenExpired,
 } from '@core/common/utils/crypto';
-import { fiveMinutesFromNow, oneDayFromNow, sevenDaysFromNow } from '@core/common/utils/date-time';
+import { FIVE_MINUTES, ONE_DAY, ONE_HOUR, sevenDaysFromNow } from '@core/common/utils/date-time';
 import type { RefreshTPayload, ResetTPayload } from '@core/common/utils/jwt';
 import {
   mfaTokenSignOptions,
@@ -35,6 +35,7 @@ import {
   verifyJwtToken,
 } from '@core/common/utils/jwt';
 import { checkForNewDevice, checkRateLimit } from '@core/common/utils/metadata';
+import { deleteCache, getCache, incrementCache, setCache } from '@core/common/utils/redis-helpers';
 import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
@@ -65,7 +66,7 @@ export class AuthService {
         );
       }
 
-      const result = await prisma.$transaction(async tx => {
+      const newUser = await prisma.$transaction(async tx => {
         const newUser = await tx.user.create({
           data: {
             email,
@@ -85,29 +86,21 @@ export class AuthService {
           },
         });
 
-        const verificationToken = generateRandomToken();
-        const expiresAt = oneDayFromNow();
-
-        const verification = await tx.verification.create({
-          data: {
-            identifier: email,
-            value: verificationToken,
-            expiresAt: expiresAt,
-          },
-        });
-
-        return {
-          user: newUser,
-          verification,
-        };
+        return newUser;
       });
 
-      const verificationUrl = `${config.FRONTEND_ORIGINS[0]}/auth/verify-email?token=${result.verification.value}`;
+      const verificationToken = generateRandomToken();
+
+      // Store verification token in Redis: key="verify_email:<token>", value=email
+      await setCache(`verify_email:${verificationToken}`, email, ONE_DAY);
+
+      const verificationUrl = `${config.FRONTEND_ORIGINS[0]}/auth/verify-email?token=${verificationToken}`;
+
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendEmailVerification(email, verificationUrl, name);
       } else {
         // eslint-disable-next-line no-console
-        console.log('Verification Token:', result.verification.value);
+        console.log('Verification Token:', verificationToken);
       }
 
       if (config.NODE_ENV === 'production') {
@@ -115,7 +108,7 @@ export class AuthService {
       }
 
       return {
-        user: result.user,
+        user: newUser,
       };
     } catch (error) {
       if (error instanceof AppError) {
@@ -129,30 +122,20 @@ export class AuthService {
     try {
       const { token } = verifyEmailData;
 
-      const verification = await prisma.verification.findFirst({
-        where: {
-          value: token,
-          isUsed: false,
-          expiresAt: { gt: new Date() },
-          type: 'EMAIL_VERIFICATION',
-        },
-      });
+      // Check Redis for token
+      const email = await getCache(`verify_email:${token}`);
 
-      if (!verification) {
-        throw new BadRequestException('Invalid verification token');
+      if (!email) {
+        throw new BadRequestException('Invalid or expired verification token');
       }
 
-      await prisma.$transaction(async tx => {
-        await tx.user.update({
-          where: { email: verification.identifier },
-          data: { emailVerified: true },
-        });
-
-        await tx.verification.update({
-          where: { id: verification.id },
-          data: { isUsed: true, usedAt: new Date() },
-        });
+      await prisma.user.update({
+        where: { email },
+        data: { emailVerified: true },
       });
+
+      // Delete token from Redis
+      await deleteCache(`verify_email:${token}`);
 
       return null;
     } catch (error) {
@@ -179,32 +162,18 @@ export class AuthService {
         throw new BadRequestException('Email is already verified');
       }
 
-      const result = await prisma.$transaction(async tx => {
-        await tx.verification.updateMany({
-          where: { identifier: email, isUsed: false, type: 'EMAIL_VERIFICATION' },
-          data: { isUsed: true, usedAt: new Date() },
-        });
+      const verificationToken = generateRandomToken();
 
-        const verificationToken = generateRandomToken();
-        const expiresAt = oneDayFromNow();
+      // Store in Redis (overwrites if collision, but tokens are random so unlikely)
+      await setCache(`verify_email:${verificationToken}`, email, ONE_DAY);
 
-        const verification = await tx.verification.create({
-          data: {
-            identifier: email,
-            value: verificationToken,
-            expiresAt: expiresAt,
-          },
-        });
+      const verificationUrl = `${config.FRONTEND_ORIGINS[0]}/auth/verify-email?token=${verificationToken}`;
 
-        return { verification };
-      });
-
-      const verificationUrl = `${config.FRONTEND_ORIGINS[0]}/auth/verify-email?token=${result.verification.value}`;
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendEmailVerification(email, verificationUrl, user.name);
       } else {
         // eslint-disable-next-line no-console
-        console.log('Verification Token:', result.verification.value);
+        console.log('Verification Token:', verificationToken);
       }
 
       return null;
@@ -329,6 +298,9 @@ export class AuthService {
         },
       });
 
+      // Invalidate cache
+      await deleteCache(`session:${sessionId}`);
+
       return null;
     } catch (error) {
       if (error instanceof AppError) {
@@ -371,6 +343,9 @@ export class AuthService {
         data: { expiresAt: sevenDaysFromNow() },
       });
 
+      // Invalidate cache to force update of expiry
+      await deleteCache(`session:${session.id}`);
+
       return {
         newAccessToken,
         newRefreshToken,
@@ -397,37 +372,17 @@ export class AuthService {
 
       await checkRateLimit(email, ipAddress, this.MAX_OTP_REQUESTS_PER_HOUR);
 
-      const result = await prisma.$transaction(async tx => {
-        await tx.verification.updateMany({
-          where: {
-            identifier: email,
-            type: 'PASSWORD_RESET',
-            isUsed: false,
-            expiresAt: { gt: new Date() },
-          },
-          data: {
-            isUsed: true,
-            usedAt: new Date(),
-          },
-        });
+      const otp = generateOTP();
 
-        const otp = generateOTP();
-        const expiresAt = fiveMinutesFromNow();
+      // Store OTP in Redis with 5 min expiry: key="password_reset:<email>"
+      await setCache(`password_reset:${email}`, otp, FIVE_MINUTES);
 
-        await tx.verification.create({
-          data: {
-            identifier: email,
-            value: otp,
-            expiresAt: expiresAt,
-            type: 'PASSWORD_RESET',
-            ipAddress: ipAddress,
-          },
-        });
-
-        return { otp };
-      });
-
-      await this.emailService.sendPasswordResetOTP(email, result.otp, user.name);
+      if (config.NODE_ENV === 'production') {
+        await this.emailService.sendPasswordResetOTP(email, otp, user.name);
+      } else {
+        // eslint-disable-next-line no-console
+        console.log('Password Reset OTP:', otp);
+      }
 
       return null;
     } catch (error) {
@@ -442,43 +397,31 @@ export class AuthService {
     try {
       const { email, otp } = verifyOtpData;
 
-      const verification = await prisma.verification.findFirst({
-        where: {
-          identifier: email,
-          type: 'PASSWORD_RESET',
-          isUsed: false,
-          expiresAt: { gt: new Date() },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      const key = `password_reset:${email}`;
+      const storedOtp = await getCache(key);
 
-      if (!verification) {
-        throw new BadRequestException('No active OTP found. Please request a new one.');
+      if (!storedOtp) {
+        throw new BadRequestException('No active OTP found or expired. Please request a new one.');
       }
 
-      if (verification.attempts >= this.MAX_OTP_ATTEMPTS) {
+      // Check attempts
+      const attemptsKey = `password_reset_attempts:${email}`;
+      const previousAttempts = await incrementCache(attemptsKey, ONE_HOUR);
+
+      if (previousAttempts > this.MAX_OTP_ATTEMPTS) {
+        await deleteCache(key); // Invalidate OTP
+        await deleteCache(attemptsKey);
         throw new BadRequestException('Too many failed attempts. Please request a new OTP.');
       }
 
-      if (verification.value !== otp) {
-        await prisma.verification.update({
-          where: { id: verification.id },
-          data: {
-            attempts: { increment: 1 },
-          },
-        });
-
-        const remainingAttempts = this.MAX_OTP_ATTEMPTS - (verification.attempts + 1);
+      if (storedOtp !== otp) {
+        const remainingAttempts = this.MAX_OTP_ATTEMPTS - previousAttempts;
         throw new BadRequestException(`Invalid OTP. ${remainingAttempts} attempt(s) remaining.`);
       }
 
-      await prisma.verification.update({
-        where: { id: verification.id },
-        data: {
-          isUsed: true,
-          usedAt: new Date(),
-        },
-      });
+      // Cleanup
+      await deleteCache(key);
+      await deleteCache(attemptsKey);
 
       const resetToken = signJwtToken({ email, purpose: 'PASSWORD_RESET' }, resetTokenSignOptions);
 
@@ -513,6 +456,12 @@ export class AuthService {
 
       const hashedPassword = await hashPassword(password);
 
+      // Fetch active sessions to invalidate cache
+      const activeSessions = await prisma.session.findMany({
+        where: { userId: user.id, isRevoked: false },
+        select: { id: true },
+      });
+
       await prisma.$transaction(async tx => {
         await tx.account.updateMany({
           where: {
@@ -532,6 +481,11 @@ export class AuthService {
           },
         });
       });
+
+      // Invalidate Redis keys
+      for (const session of activeSessions) {
+        await deleteCache(`session:${session.id}`);
+      }
 
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendPasswordChangeConfirmation(email, user.name);
@@ -592,6 +546,14 @@ export class AuthService {
         },
         data: {
           password: hashedPassword,
+        },
+      });
+
+      await prisma.session.updateMany({
+        where: { userId: userId },
+        data: {
+          isRevoked: true,
+          revokedAt: new Date(),
         },
       });
 

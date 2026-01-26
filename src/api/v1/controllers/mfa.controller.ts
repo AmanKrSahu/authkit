@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@core/common/utils/app-error';
 import { clearMfaLoginCookie, setAuthenticationCookies } from '@core/common/utils/cookie';
 import { getClientIP, getUserAgent } from '@core/common/utils/metadata';
 import { verifyMfaForLoginSchema, verifyMfaSchema } from '@core/common/validators/mfa.validator';
@@ -65,7 +66,13 @@ export class MfaController {
     const userAgent = getUserAgent(req);
     const ipAddress = getClientIP(req);
 
-    const { code, mfaLoginToken } = verifyMfaForLoginSchema.parse({
+    const mfaLoginToken = req.cookies.mfaLoginToken;
+
+    if (!mfaLoginToken) {
+      throw new UnauthorizedException('Missing MFA login token');
+    }
+
+    const { code } = verifyMfaForLoginSchema.parse({
       ...req.body,
     });
 

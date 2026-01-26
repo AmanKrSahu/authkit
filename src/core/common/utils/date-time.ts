@@ -1,11 +1,5 @@
 import { add } from 'date-fns';
 
-export const fiveMinutesFromNow = (): Date => new Date(Date.now() + 5 * 60 * 1000);
-
-export const oneHourFromNow = (): Date => new Date(Date.now() + 60 * 60 * 1000);
-
-export const oneDayFromNow = (): Date => new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
-
 export const sevenDaysFromNow = (): Date => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
 export const calculateExpirationDate = (expiresIn: string = '15m'): Date => {
@@ -48,3 +42,17 @@ export const formatDate = (date: Date): string => {
     timeZoneName: 'short',
   });
 };
+
+// Seconds
+export const ONE_MINUTE = 60;
+export const FIVE_MINUTES = 60 * 5;
+export const ONE_HOUR = 60 * 60;
+export const ONE_DAY = 60 * 60 * 24;
+export const SEVEN_DAYS = 60 * 60 * 24 * 7;
+export const THIRTY_DAYS = 60 * 60 * 24 * 30;
+
+// Milliseconds
+export const ONE_SECOND_IN_MS = 1000;
+export const ONE_MINUTE_IN_MS = 60 * 1000;
+export const FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000;
+export const ONE_HOUR_IN_MS = 60 * 60 * 1000;

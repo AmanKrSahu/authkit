@@ -1,12 +1,13 @@
 import { authenticateJWT } from '@core/common/strategies/jwt.strategy';
 import { Router } from 'express';
 
+import { authRateLimiter } from '../middlewares/rate-limiter.middleware';
 import { authController } from '../modules/auth.module';
 
 const authRoutes = Router();
 
-authRoutes.post('/register', authController.register);
-authRoutes.post('/login', authController.login);
+authRoutes.post('/register', authRateLimiter, authController.register);
+authRoutes.post('/login', authRateLimiter, authController.login);
 authRoutes.post('/logout', authenticateJWT, authController.logout);
 
 authRoutes.post('/refresh-token', authController.refreshAccessToken);

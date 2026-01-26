@@ -31,28 +31,6 @@ model User {
   @@map("user")
 }
 
-model Session {
-  id        String    @id @default(cuid())
-  expiresAt DateTime
-  token     String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  ipAddress String
-  userAgent String
-  isRevoked Boolean   @default(false)
-  revokedAt DateTime?
-
-  // Device fingerprinting
-  deviceFingerprint String
-  isNewDevice       Boolean @default(false)
-
-  // Relations
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("session")
-}
-
 model Account {
   id                    String    @id @default(cuid())
   accountId             String
@@ -75,19 +53,24 @@ model Account {
   @@map("account")
 }
 
-model Verification {
-  id         String    @id @default(cuid())
-  identifier String
-  value      String
-  type       String    @default("EMAIL_VERIFICATION")
-  expiresAt  DateTime
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  isUsed     Boolean   @default(false)
-  usedAt     DateTime?
-  attempts   Int       @default(0)
-  ipAddress  String?
+model Session {
+  id        String    @id @default(cuid())
+  expiresAt DateTime
+  token     String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  ipAddress String
+  userAgent String
+  isRevoked Boolean   @default(false)
+  revokedAt DateTime?
 
-  @@unique([identifier, value])
-  @@map("verification")
+  // Device fingerprinting
+  deviceFingerprint String
+  isNewDevice       Boolean @default(false)
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
 }

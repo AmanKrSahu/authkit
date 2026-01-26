@@ -15,7 +15,7 @@ router.use('/', healthRoutes);
 router.use('/auth/', authRoutes);
 router.use('/oauth/', oauthRoutes);
 
-router.use('/mfa/', authenticateJWT, mfaRoutes);
+router.use('/mfa/', mfaRoutes);
 
 router.use('/session/', authenticateJWT, sessionRoutes);
 

@@ -19,14 +19,21 @@ import {
   generateDeviceFingerprint,
   generateSessionToken,
 } from '@core/common/utils/crypto';
-import { oneHourFromNow, sevenDaysFromNow } from '@core/common/utils/date-time';
+import { sevenDaysFromNow } from '@core/common/utils/date-time';
+import { ONE_HOUR } from '@core/common/utils/date-time';
 import type { MFATPayload } from '@core/common/utils/jwt';
-import { refreshTokenSignOptions, signJwtToken, verifyJwtToken } from '@core/common/utils/jwt';
+import {
+  mfaTokenSignOptions,
+  refreshTokenSignOptions,
+  signJwtToken,
+  verifyJwtToken,
+} from '@core/common/utils/jwt';
 import {
   checkForNewDevice,
   checkMfaRateLimit,
   incrementMfaRateLimit,
 } from '@core/common/utils/metadata';
+import { deleteCache, getCache, setCache } from '@core/common/utils/redis-helpers';
 import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
@@ -70,23 +77,8 @@ export class MfaService {
 
       const qrImageUrl = await qrcode.toDataURL(url);
 
-      // Store in Verification table with short expiry (e.g. 1 hour)
-      // First, clear any existing pending MFA setups for this user
-      await prisma.verification.deleteMany({
-        where: {
-          identifier: userId,
-          type: 'MFA_SETUP',
-        },
-      });
-
-      await prisma.verification.create({
-        data: {
-          identifier: userId,
-          value: secretKey,
-          type: 'MFA_SETUP',
-          expiresAt: oneHourFromNow(),
-        },
-      });
+      // Store in Redis with 1 hour expiry
+      await setCache(`mfa_setup:${userId}`, secretKey, ONE_HOUR);
 
       return {
         qrImageUrl,
@@ -113,22 +105,13 @@ export class MfaService {
         throw new BadRequestException('MFA is already enabled');
       }
 
-      const verificationStr = await prisma.verification.findFirst({
-        where: {
-          identifier: userId,
-          type: 'MFA_SETUP',
-          expiresAt: { gt: new Date() },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      const secretKey = await getCache(`mfa_setup:${userId}`);
 
-      if (!verificationStr) {
+      if (!secretKey) {
         throw new BadRequestException(
           'MFA setup not initiated or expired. Please generate setup first.'
         );
       }
-
-      const secretKey = verificationStr.value;
 
       const isValid = speakeasy.totp.verify({
         secret: secretKey,
@@ -153,9 +136,7 @@ export class MfaService {
         },
       });
 
-      await prisma.verification.delete({
-        where: { id: verificationStr.id },
-      });
+      await deleteCache(`mfa_setup:${userId}`);
 
       return {
         message: 'MFA setup completed successfully',
@@ -205,7 +186,9 @@ export class MfaService {
     try {
       const { code, userAgent, ipAddress, mfaLoginToken } = verifyMFAForLoginData;
 
-      const { payload } = verifyJwtToken<MFATPayload>(mfaLoginToken);
+      const { payload } = verifyJwtToken<MFATPayload>(mfaLoginToken, {
+        secret: mfaTokenSignOptions.secret,
+      });
 
       if (!payload) {
         throw new UnauthorizedException('Invalid or expired login token');
@@ -311,6 +294,8 @@ export class MfaService {
         refreshToken,
       };
     } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('verifyMFAForLogin Error:', error);
       if (error instanceof AppError) {
         throw error;
       }
