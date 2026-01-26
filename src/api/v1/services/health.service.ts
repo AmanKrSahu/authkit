@@ -1,4 +1,5 @@
 import type { DetailedHealthData, HealthData } from '@core/common/interface/health.interface';
+import { getAppVersion } from '@core/common/utils/metadata';
 
 export class HealthService {
   public async getBasicHealth(): Promise<HealthData> {
@@ -6,7 +7,7 @@ export class HealthService {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      version: await this.getAppVersion(),
+      version: await getAppVersion(),
     };
   }
 
@@ -18,7 +19,7 @@ export class HealthService {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      version: await this.getAppVersion(),
+      version: await getAppVersion(),
       environment: process.env.NODE_ENV ?? 'development',
       memory: {
         used: memoryUsage.heapUsed,
@@ -32,14 +33,5 @@ export class HealthService {
       arch: process.arch,
       cpuUsage,
     };
-  }
-
-  private async getAppVersion(): Promise<string> {
-    try {
-      const packageJson = await import('../../../../package.json');
-      return packageJson.version ?? '1.0.0';
-    } catch {
-      return '1.0.0';
-    }
   }
 }

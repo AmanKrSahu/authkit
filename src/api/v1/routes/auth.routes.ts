@@ -1,7 +1,5 @@
 import { authenticateJWT } from '@core/common/strategies/jwt.strategy';
-import { config } from '@core/config/app.config';
 import { Router } from 'express';
-import passport from 'passport';
 
 import { authController } from '../modules/auth.module';
 
@@ -10,26 +8,6 @@ const authRoutes = Router();
 authRoutes.post('/register', authController.register);
 authRoutes.post('/login', authController.login);
 authRoutes.post('/logout', authenticateJWT, authController.logout);
-
-authRoutes.get(
-  '/google',
-  passport.authenticate('google', {
-    scope: ['profile', 'email'],
-    session: false,
-  })
-);
-
-// Construct success and failure URLs for Google OAuth callbacks
-const failedUrl = `${config.FRONTEND_ORIGINS[0]}/auth/sign-in?status=failure`;
-
-authRoutes.get(
-  '/google/callback',
-  passport.authenticate('google', {
-    session: false,
-    failureRedirect: failedUrl,
-  }),
-  authController.googleCallback
-);
 
 authRoutes.post('/refresh-token', authController.refreshAccessToken);
 
