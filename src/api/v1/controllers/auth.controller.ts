@@ -1,11 +1,12 @@
-import { GoogleProfile } from '@core/common/interface/auth.interface';
-import { NotFoundException, UnauthorizedException } from '@core/common/utils/app-error';
+import { AppError, NotFoundException, UnauthorizedException } from '@core/common/utils/app-error';
 import {
   clearAuthenticationCookies,
   clearResetTokenCookie,
   setAuthenticationCookies,
+  setMfaLoginCookie,
   setResetTokenCookie,
 } from '@core/common/utils/cookie';
+import { getClientIP, getUserAgent } from '@core/common/utils/metadata';
 import {
   changePasswordSchema,
   forgotPasswordSchema,
@@ -16,7 +17,6 @@ import {
   verifyEmailSchema,
   verifyOtpSchema,
 } from '@core/common/validators/auth.validator';
-import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import { AsyncHandler } from '@core/decorator/async-handler.decorator';
 import { User } from '@prisma/client';
@@ -29,18 +29,6 @@ export class AuthController {
 
   constructor(authService: AuthService) {
     this.authService = authService;
-  }
-
-  private getUserAgent(req: Request): string {
-    return req.headers['user-agent'] ?? 'Unknown';
-  }
-
-  private getClientIP(req: Request): string {
-    return (
-      ((req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
-        (req.connection?.remoteAddress ?? req.socket?.remoteAddress)) ??
-      'Unknown'
-    );
   }
 
   @AsyncHandler
@@ -83,38 +71,35 @@ export class AuthController {
   };
 
   @AsyncHandler
-  public googleCallback = async (req: Request, res: Response) => {
-    const userAgent = this.getUserAgent(req);
-    const ipAddress = this.getClientIP(req);
-    const profile = req.user as GoogleProfile;
-
-    const { accessToken, refreshToken } = await this.authService.loginWithGoogle({
-      profile,
-      userAgent,
-      ipAddress,
-    });
-
-    return setAuthenticationCookies({
-      res,
-      accessToken,
-      refreshToken,
-    }).redirect(`${config.FRONTEND_ORIGINS[1]}?status=success`);
-  };
-
-  @AsyncHandler
   public login = async (req: Request, res: Response) => {
-    const userAgent = this.getUserAgent(req);
-    const ipAddress = this.getClientIP(req);
+    const userAgent = getUserAgent(req);
+    const ipAddress = getClientIP(req);
 
     const body = loginSchema.parse({
       ...req.body,
     });
 
-    const { user, accessToken, refreshToken } = await this.authService.login({
-      ...body,
-      userAgent,
-      ipAddress,
-    });
+    const { user, mfaRequired, accessToken, refreshToken, mfaLoginToken } =
+      await this.authService.login({
+        ...body,
+        userAgent,
+        ipAddress,
+      });
+
+    if (mfaRequired) {
+      if (!mfaLoginToken) {
+        throw new AppError(
+          'An error occurred during login. Please try again.',
+          HTTPSTATUS.INTERNAL_SERVER_ERROR
+        );
+      }
+
+      return setMfaLoginCookie({ res, mfaLoginToken }).status(HTTPSTATUS.OK).json({
+        success: true,
+        message: 'MFA verification required',
+        data: { user },
+      });
+    }
 
     return setAuthenticationCookies({
       res,
@@ -171,7 +156,7 @@ export class AuthController {
 
   @AsyncHandler
   public forgotPassword = async (req: Request, res: Response) => {
-    const ipAddress = this.getClientIP(req);
+    const ipAddress = getClientIP(req);
 
     const body = forgotPasswordSchema.parse({ ...req.body });
 

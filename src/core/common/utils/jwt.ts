@@ -1,7 +1,6 @@
+import { config } from '@core/config/app.config';
 import type { SignOptions, VerifyOptions } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
-
-import { config } from '../../config/app.config';
 
 export type AccessTPayload = {
   userId: string;
@@ -17,31 +16,41 @@ export type ResetTPayload = {
   purpose: 'PASSWORD_RESET';
 };
 
-type SignOptsAndSecret = SignOptions & {
-  secret: string;
+export type MFATPayload = {
+  userId: string;
+  purpose: 'MFA_LOGIN';
 };
 
 const defaults: SignOptions & VerifyOptions = {
   audience: 'user',
 };
 
+type SignOptsAndSecret = SignOptions & {
+  secret: string;
+};
+
 export const accessTokenSignOptions: SignOptsAndSecret = {
-  expiresIn: config.JWT.EXPIRES_IN as SignOptions['expiresIn'],
   secret: config.JWT.SECRET,
+  expiresIn: config.JWT.EXPIRES_IN as SignOptions['expiresIn'],
 };
 
 export const refreshTokenSignOptions: SignOptsAndSecret = {
-  expiresIn: config.JWT.REFRESH_EXPIRES_IN as SignOptions['expiresIn'],
   secret: config.JWT.REFRESH_SECRET,
+  expiresIn: config.JWT.REFRESH_EXPIRES_IN as SignOptions['expiresIn'],
 };
 
 export const resetTokenSignOptions: SignOptsAndSecret = {
-  expiresIn: '10m',
   secret: config.JWT.RESET_SECRET,
+  expiresIn: config.JWT.RESET_EXPIRES_IN as SignOptions['expiresIn'],
+};
+
+export const mfaTokenSignOptions: SignOptsAndSecret = {
+  secret: config.JWT.MFA_LOGIN_SECRET,
+  expiresIn: config.JWT.MFA_LOGIN_EXPIRES_IN as SignOptions['expiresIn'],
 };
 
 export const signJwtToken = (
-  payload: AccessTPayload | RefreshTPayload | ResetTPayload,
+  payload: AccessTPayload | RefreshTPayload | ResetTPayload | MFATPayload,
   options?: SignOptsAndSecret
 ) => {
   const { secret, ...opts } = options ?? accessTokenSignOptions;

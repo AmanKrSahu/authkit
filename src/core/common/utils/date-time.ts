@@ -2,6 +2,8 @@ import { add } from 'date-fns';
 
 export const fiveMinutesFromNow = (): Date => new Date(Date.now() + 5 * 60 * 1000);
 
+export const oneHourFromNow = (): Date => new Date(Date.now() + 60 * 60 * 1000);
+
 export const oneDayFromNow = (): Date => new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
 
 export const sevenDaysFromNow = (): Date => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
