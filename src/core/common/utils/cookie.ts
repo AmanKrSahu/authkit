@@ -5,8 +5,12 @@ import { calculateExpirationDate } from './date-time';
 
 type AuthCookiePayloadType = {
   res: Response;
-  accessToken: string;
   refreshToken: string;
+};
+
+type CsrfCookiePayloadType = {
+  res: Response;
+  csrfToken: string;
 };
 
 type ResetCookiePayloadType = {
@@ -26,12 +30,13 @@ const defaults: CookieOptions = {
   domain: config.DOMAIN_URL,
 };
 
-export const getAccessTokenCookieOptions = (): CookieOptions => {
-  const expiresIn = config.JWT.EXPIRES_IN;
+export const getCsrfTokenCookieOptions = (): CookieOptions => {
+  const expiresIn = config.JWT.REFRESH_EXPIRES_IN; // Match refresh token life or shorter
   const expires = calculateExpirationDate(expiresIn);
 
   return {
     ...defaults,
+    httpOnly: false, // Must be readable by client JS for Double-Submit
     expires,
     path: '/',
   };
@@ -70,14 +75,11 @@ export const getMfaCookieOptions = (): CookieOptions => {
   };
 };
 
-export const setAuthenticationCookies = ({
-  res,
-  accessToken,
-  refreshToken,
-}: AuthCookiePayloadType): Response =>
-  res
-    .cookie('accessToken', accessToken, getAccessTokenCookieOptions())
-    .cookie('refreshToken', refreshToken, getRefreshTokenCookieOptions());
+export const setAuthenticationCookies = ({ res, refreshToken }: AuthCookiePayloadType): Response =>
+  res.cookie('refreshToken', refreshToken, getRefreshTokenCookieOptions());
+
+export const setCsrfCookie = ({ res, csrfToken }: CsrfCookiePayloadType): Response =>
+  res.cookie('csrfToken', csrfToken, getCsrfTokenCookieOptions());
 
 export const setResetTokenCookie = ({ res, resetToken }: ResetCookiePayloadType): Response =>
   res.cookie('resetToken', resetToken, getResetTokenCookieOptions());
@@ -86,7 +88,10 @@ export const setMfaLoginCookie = ({ res, mfaLoginToken }: MfaCookiePayloadType):
   res.cookie('mfaLoginToken', mfaLoginToken, getMfaCookieOptions());
 
 export const clearAuthenticationCookies = (res: Response): Response =>
-  res.clearCookie('accessToken', { path: '/' }).clearCookie('refreshToken', { path: '/' });
+  res.clearCookie('refreshToken', { path: '/' });
+
+export const clearCsrfCookie = (res: Response): Response =>
+  res.clearCookie('csrfToken', { path: '/' });
 
 export const clearResetTokenCookie = (res: Response): Response =>
   res.clearCookie('resetToken', { path: '/' });

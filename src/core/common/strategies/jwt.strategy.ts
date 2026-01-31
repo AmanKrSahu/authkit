@@ -5,8 +5,6 @@ import { ExtractJwt, Strategy as JwtStrategy } from 'passport-jwt';
 
 import { config } from '../../config/app.config';
 import prisma from '../../database/prisma';
-import { ErrorCodeEnum } from '../enums/error-code.enum';
-import { UnauthorizedException } from '../utils/app-error';
 import { ONE_DAY } from '../utils/date-time';
 import { getCache, setCache } from '../utils/redis-helpers';
 
@@ -16,20 +14,7 @@ interface JwtPayload {
 }
 
 const options: StrategyOptionsWithRequest = {
-  jwtFromRequest: ExtractJwt.fromExtractors([
-    req => {
-      const accessToken = req.cookies.accessToken;
-
-      if (!accessToken) {
-        throw new UnauthorizedException(
-          'Unauthorized access token',
-          ErrorCodeEnum.AUTH_TOKEN_NOT_FOUND
-        );
-      }
-
-      return accessToken;
-    },
-  ]),
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: config.JWT.SECRET,
   audience: ['user'],
   algorithms: ['HS256'],

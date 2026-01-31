@@ -22,11 +22,17 @@ const options: swaggerJsdoc.Options = {
           scheme: 'bearer',
           bearerFormat: 'JWT',
         },
+        csrfAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-csrf-token',
+        },
       },
     },
     security: [
       {
         bearerAuth: [],
+        csrfAuth: [],
       },
     ],
   },

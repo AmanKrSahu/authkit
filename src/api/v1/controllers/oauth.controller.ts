@@ -1,5 +1,5 @@
 import { GoogleProfile } from '@core/common/interface/oauth.interface';
-import { setAuthenticationCookies } from '@core/common/utils/cookie';
+import { setAuthenticationCookies, setCsrfCookie } from '@core/common/utils/cookie';
 import { getClientIP, getUserAgent } from '@core/common/utils/metadata';
 import { config } from '@core/config/app.config';
 import { AsyncHandler } from '@core/decorator/async-handler.decorator';
@@ -36,16 +36,21 @@ export class OAuthController {
     const ipAddress = getClientIP(req);
     const profile = req.user as GoogleProfile;
 
-    const { accessToken, refreshToken } = await this.oauthService.loginWithGoogle({
+    const { refreshToken } = await this.oauthService.loginWithGoogle({
       profile,
       userAgent,
       ipAddress,
     });
 
-    return setAuthenticationCookies({
+    // Generate random CSRF token
+    const csrfToken = crypto.randomUUID();
+
+    setAuthenticationCookies({
       res,
-      accessToken,
       refreshToken,
-    }).redirect(`${config.FRONTEND_ORIGINS[1]}?status=success`);
+    });
+    setCsrfCookie({ res, csrfToken });
+
+    return res.redirect(`${config.FRONTEND_ORIGINS[1]}?status=success`);
   };
 }

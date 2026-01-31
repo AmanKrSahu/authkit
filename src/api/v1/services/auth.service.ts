@@ -34,6 +34,7 @@ import {
   signJwtToken,
   verifyJwtToken,
 } from '@core/common/utils/jwt';
+import { logger } from '@core/common/utils/logger';
 import { checkForNewDevice, checkRateLimit } from '@core/common/utils/metadata';
 import { deleteCache, getCache, incrementCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
@@ -100,8 +101,7 @@ export class AuthService {
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendEmailVerification(email, verificationUrl, name);
       } else {
-        // eslint-disable-next-line no-console
-        console.log('Verification Token:', verificationToken);
+        logger.info(`Verification Token: ${verificationToken}`);
       }
 
       if (config.NODE_ENV === 'production') {
@@ -173,8 +173,7 @@ export class AuthService {
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendEmailVerification(email, verificationUrl, user.name);
       } else {
-        // eslint-disable-next-line no-console
-        console.log('Verification Token:', verificationToken);
+        logger.info(`Verification Token: ${verificationToken}`);
       }
 
       return null;
@@ -381,8 +380,7 @@ export class AuthService {
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendPasswordResetOTP(email, otp, user.name);
       } else {
-        // eslint-disable-next-line no-console
-        console.log('Password Reset OTP:', otp);
+        logger.info(`Password Reset OTP: ${otp}`);
       }
 
       return null;
@@ -540,22 +538,24 @@ export class AuthService {
 
       const hashedPassword = await hashPassword(newPassword);
 
-      await prisma.account.updateMany({
-        where: {
-          userId: userId,
-          providerId: 'credential',
-        },
-        data: {
-          password: hashedPassword,
-        },
-      });
+      await prisma.$transaction(async tx => {
+        await tx.account.updateMany({
+          where: {
+            userId: userId,
+            providerId: 'credential',
+          },
+          data: {
+            password: hashedPassword,
+          },
+        });
 
-      await prisma.session.updateMany({
-        where: { userId: userId },
-        data: {
-          isRevoked: true,
-          revokedAt: new Date(),
-        },
+        await tx.session.updateMany({
+          where: { userId: userId },
+          data: {
+            isRevoked: true,
+            revokedAt: new Date(),
+          },
+        });
       });
 
       if (config.NODE_ENV === 'production') {

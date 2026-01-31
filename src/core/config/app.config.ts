@@ -38,7 +38,7 @@ const appConfig = () => ({
 
   AUTHENTICATOR_APP_SECRET: getEnvironment(
     'AUTHENTICATOR_APP_SECRET',
-    'dev_secret_key_which_should_be_32_chars_long'
+    'authenticator-app-secret-dev'
   ),
 });
 

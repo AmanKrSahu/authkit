@@ -1,5 +1,6 @@
-/* eslint-disable no-console */
 import prisma from '@core/database/prisma';
+
+import { logger } from '../common/utils/logger';
 
 // =====================================================
 // SEEDING FUNCTIONS
@@ -12,15 +13,15 @@ import prisma from '@core/database/prisma';
 // =====================================================
 
 async function main() {
-  console.log('Starting database seeding...');
+  logger.info('Starting database seeding...');
 
   try {
     // Run all seed functions sequentially
     // Add your custom seeding functions here
 
-    console.log('All seeding completed successfully!');
+    logger.info('All seeding completed successfully!');
   } catch (error) {
-    console.error('Seeding failed:', error);
+    logger.error('Seeding failed:', error as Error);
     throw error;
   }
 }
@@ -33,7 +34,7 @@ async function runSeed() {
   try {
     await main();
   } catch (error) {
-    console.error('Fatal error during seeding:', error);
+    logger.error('Fatal error during seeding:', error as Error);
     throw error;
   } finally {
     await prisma.$disconnect();

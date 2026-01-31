@@ -1,8 +1,10 @@
 import { AppError, NotFoundException, UnauthorizedException } from '@core/common/utils/app-error';
 import {
   clearAuthenticationCookies,
+  clearCsrfCookie,
   clearResetTokenCookie,
   setAuthenticationCookies,
+  setCsrfCookie,
   setMfaLoginCookie,
   setResetTokenCookie,
 } from '@core/common/utils/cookie';
@@ -235,17 +237,21 @@ export class AuthController {
       });
     }
 
-    return setAuthenticationCookies({
-      res,
-      accessToken,
-      refreshToken,
-    })
-      .status(HTTPSTATUS.OK)
-      .json({
-        success: true,
-        message: 'User signed in successfully',
-        data: { user },
-      });
+    // Generate random CSRF token
+    const csrfToken = crypto.randomUUID();
+
+    // Set Cookies
+    setAuthenticationCookies({ res, refreshToken });
+    setCsrfCookie({ res, csrfToken });
+
+    // Set No-Store Header
+    res.setHeader('Cache-Control', 'no-store');
+
+    return res.status(HTTPSTATUS.OK).json({
+      success: true,
+      message: 'User signed in successfully',
+      data: { user, accessToken },
+    });
   };
 
   /**
@@ -274,7 +280,10 @@ export class AuthController {
 
     await this.authService.logout({ sessionId });
 
-    return clearAuthenticationCookies(res).status(HTTPSTATUS.OK).json({
+    clearAuthenticationCookies(res);
+    clearCsrfCookie(res);
+
+    return res.status(HTTPSTATUS.OK).json({
       success: true,
       message: 'Logged out successfully',
     });
@@ -310,16 +319,19 @@ export class AuthController {
       refreshToken,
     });
 
-    return setAuthenticationCookies({
-      res,
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-    })
-      .status(HTTPSTATUS.OK)
-      .json({
-        success: true,
-        message: 'Token refreshed successfully',
-      });
+    // Rotate CSRF Token
+    const csrfToken = crypto.randomUUID();
+
+    setAuthenticationCookies({ res, refreshToken: newRefreshToken });
+    setCsrfCookie({ res, csrfToken });
+
+    res.setHeader('Cache-Control', 'no-store');
+
+    return res.status(HTTPSTATUS.OK).json({
+      success: true,
+      message: 'Token refreshed successfully',
+      data: { accessToken: newAccessToken },
+    });
   };
 
   /**
@@ -405,6 +417,9 @@ export class AuthController {
     const body = verifyOtpSchema.parse({ ...req.body });
 
     const { resetToken } = await this.authService.verifyOtp(body);
+
+    const csrfToken = crypto.randomUUID();
+    setCsrfCookie({ res, csrfToken });
 
     return setResetTokenCookie({
       res,

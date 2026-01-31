@@ -1,6 +1,6 @@
-/* eslint-disable no-console */
 import 'dotenv/config';
 
+import { logger } from '@core/common/utils/logger';
 import { config } from '@core/config/app.config';
 import { swaggerSpec } from '@core/config/swagger.config';
 import redis from '@core/database/redis';
@@ -44,7 +44,14 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'x-csrf-token',
+    ],
     exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
   })
 );
@@ -59,12 +66,12 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(errorHandler);
 
 app.listen(config.PORT, async () => {
-  console.log(`Server listening on port ${config.PORT} in ${config.NODE_ENV}`);
+  logger.info(`Server listening on port ${config.PORT} in ${config.NODE_ENV}`);
 
   try {
     await redis.ping();
-    console.log(`Redis connected on port ${config.REDIS.PORT} in ${config.NODE_ENV}`);
+    logger.info(`Redis connected on port ${config.REDIS.PORT} in ${config.NODE_ENV}`);
   } catch (error) {
-    console.error('Redis connection failed:', error);
+    logger.error('Redis connection failed:', error as Error);
   }
 });

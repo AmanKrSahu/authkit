@@ -1,5 +1,6 @@
 import { ErrorCodeEnum } from '@core/common/enums/error-code.enum.js';
 import { AppError } from '@core/common/utils/app-error.js';
+import { logger } from '@core/common/utils/logger';
 import { HTTPSTATUS } from '@core/config/http.config.js';
 import type { ErrorRequestHandler, Response } from 'express';
 import { ZodError } from 'zod';
@@ -18,8 +19,7 @@ const formatZodError = (response: Response, error: ZodError) => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const errorHandler: ErrorRequestHandler = (error, request, response, _next): any => {
-  // eslint-disable-next-line no-console
-  console.error(`Error Occured on PATH: ${request.path}`, error);
+  logger.error(`Error Occured on PATH: ${request.path}`, error);
 
   if (error instanceof SyntaxError) {
     return response.status(HTTPSTATUS.BAD_REQUEST).json({

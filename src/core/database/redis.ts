@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+import { logger } from '@core/common/utils/logger';
 import { config } from '@core/config/app.config';
 import Redis from 'ioredis';
 
@@ -10,11 +10,11 @@ const redisConfig = {
 const redisClient = new Redis(redisConfig);
 
 redisClient.on('connect', () => {
-  console.log('Redis client connected successfully');
+  logger.info('Redis client connected successfully');
 });
 
 redisClient.on('error', error => {
-  console.error('Redis connection error:', error);
+  logger.error('Redis connection error:', error as Error);
 });
 
 export default redisClient;

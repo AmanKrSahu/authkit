@@ -1,6 +1,6 @@
-/* eslint-disable no-console */
 import { AppError } from '@core/common/utils/app-error';
 import { FIVE_MINUTES } from '@core/common/utils/date-time';
+import { logger } from '@core/common/utils/logger';
 import redis from '@core/database/redis';
 
 /**
@@ -10,7 +10,7 @@ export const setCache = async (key: string, value: string, ttl: number = FIVE_MI
   try {
     await redis.set(key, value, 'EX', ttl);
   } catch (error) {
-    console.error(`Redis Set Error for key ${key}:`, error);
+    logger.error(`Redis Set Error for key ${key}:`, error as Error);
     // Non-blocking error for cache setting failure?
     // Usually better to throw if strict, but for cache often we log and proceed.
     // Given we are replacing DB for OTPs, this MUST succeed.
@@ -25,7 +25,7 @@ export const getCache = async (key: string): Promise<string | null> => {
   try {
     return await redis.get(key);
   } catch (error) {
-    console.error(`Redis Get Error for key ${key}:`, error);
+    logger.error(`Redis Get Error for key ${key}:`, error as Error);
     return null;
   }
 };
@@ -37,7 +37,7 @@ export const deleteCache = async (key: string) => {
   try {
     await redis.del(key);
   } catch (error) {
-    console.error(`Redis Delete Error for key ${key}:`, error);
+    logger.error(`Redis Delete Error for key ${key}:`, error as Error);
   }
 };
 
@@ -55,7 +55,7 @@ export const incrementCache = async (key: string, ttl?: number): Promise<number>
     }
     return value;
   } catch (error) {
-    console.error(`Redis Incr Error for key ${key}:`, error);
+    logger.error(`Redis Incr Error for key ${key}:`, error as Error);
     throw new AppError('Internal Cache Error');
   }
 };

@@ -223,6 +223,8 @@ export class MfaService {
         });
       }
 
+      let newBackupCodes: string[] | null = null;
+
       if (isValid == false) {
         // Check backup codes (hashed)
         // We need to compare specific code against all hashed backup codes.
@@ -231,14 +233,8 @@ export class MfaService {
           const isMatch = await comparePassword(code, hashedCode);
           if (isMatch) {
             isValid = true;
-            // Remove used backup code
-            const newBackupCodes = user.backupCodes.filter(c => c !== hashedCode);
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                backupCodes: newBackupCodes,
-              },
-            });
+            // Store new backup codes for update later
+            newBackupCodes = user.backupCodes.filter(c => c !== hashedCode);
             break;
           }
         }
@@ -260,16 +256,27 @@ export class MfaService {
       const sessionToken = generateSessionToken();
       const expiresAt = sevenDaysFromNow();
 
-      const session = await prisma.session.create({
-        data: {
-          token: sessionToken,
-          userId: user.id,
-          expiresAt: expiresAt,
-          ipAddress: ipAddress,
-          userAgent: userAgent,
-          deviceFingerprint,
-          isNewDevice,
-        },
+      const session = await prisma.$transaction(async tx => {
+        if (newBackupCodes) {
+          await tx.user.update({
+            where: { id: user.id },
+            data: {
+              backupCodes: newBackupCodes,
+            },
+          });
+        }
+
+        return await tx.session.create({
+          data: {
+            token: sessionToken,
+            userId: user.id,
+            expiresAt: expiresAt,
+            ipAddress: ipAddress,
+            userAgent: userAgent,
+            deviceFingerprint,
+            isNewDevice,
+          },
+        });
       });
 
       if (isNewDevice && config.NODE_ENV === 'production') {
@@ -295,8 +302,6 @@ export class MfaService {
         refreshToken,
       };
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('verifyMFAForLogin Error:', error);
       if (error instanceof AppError) {
         throw error;
       }

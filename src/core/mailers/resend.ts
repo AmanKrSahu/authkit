@@ -1,4 +1,5 @@
 import { formatDate } from '@core/common/utils/date-time';
+import { logger } from '@core/common/utils/logger';
 import { config } from '@core/config/app.config';
 import { Resend } from 'resend';
 
@@ -35,8 +36,7 @@ export class EmailService {
 
       return result;
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to send email:', error);
+      logger.error('Failed to send email:', error as Error);
       throw new Error('Failed to send email');
     }
   }

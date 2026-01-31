@@ -1,5 +1,9 @@
 import { UnauthorizedException } from '@core/common/utils/app-error';
-import { clearMfaLoginCookie, setAuthenticationCookies } from '@core/common/utils/cookie';
+import {
+  clearMfaLoginCookie,
+  setAuthenticationCookies,
+  setCsrfCookie,
+} from '@core/common/utils/cookie';
 import { getClientIP, getUserAgent } from '@core/common/utils/metadata';
 import { verifyMfaForLoginSchema, verifyMfaSchema } from '@core/common/validators/mfa.validator';
 import { HTTPSTATUS } from '@core/config/http.config';
@@ -173,17 +177,23 @@ export class MfaController {
       mfaLoginToken,
     });
 
+    // Generate random CSRF token
+    const csrfToken = crypto.randomUUID();
+
     clearMfaLoginCookie(res);
 
-    return setAuthenticationCookies({
+    setAuthenticationCookies({
       res,
-      accessToken,
       refreshToken,
-    })
-      .status(HTTPSTATUS.OK)
-      .json({
-        message: 'Verified & login successfully',
-        data: { user },
-      });
+    });
+    setCsrfCookie({ res, csrfToken });
+
+    // Set No-Store Header
+    res.setHeader('Cache-Control', 'no-store');
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: 'Verified & login successfully',
+      data: { user, accessToken },
+    });
   };
 }
