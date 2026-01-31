@@ -6,6 +6,7 @@ import { roleGuard } from '../middlewares/role.middleware';
 import adminRoutes from './admin.routes';
 import authRoutes from './auth.routes';
 import healthRoutes from './health.routes';
+import magicLinkRoutes from './magic-link.routes';
 import mfaRoutes from './mfa.routes';
 import oauthRoutes from './oauth.route';
 import sessionRoutes from './session.routes';
@@ -17,6 +18,7 @@ router.use('/', healthRoutes);
 
 router.use('/auth/', authRoutes);
 router.use('/oauth/', oauthRoutes);
+router.use('/magic-link', magicLinkRoutes);
 
 router.use('/mfa/', mfaRoutes);
 

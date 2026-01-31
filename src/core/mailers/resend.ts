@@ -306,6 +306,63 @@ export class EmailService {
 
     return this.sendEmail({ to, subject, html });
   }
+
+  // Send Magic Link login notification
+  public async sendMagicLink(to: string, url: string, name?: string) {
+    const subject = 'Login with Magic Link';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Magic Link Login</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #7c3aed;">✨ Magic Link Login</h1>
+            </div>
+            
+            <div style="background-color: #f5f3ff; padding: 30px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #7c3aed;">
+              <p style="font-size: 16px; margin-bottom: 20px;">
+                ${name ? `Hi ${name},` : 'Hi there,'}
+              </p>
+              
+              <p style="font-size: 16px; margin-bottom: 20px;">
+                You requested to login via magic link. Click the button below to sign in:
+              </p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${url}" 
+                   style="display: inline-block; background-color: #7c3aed; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                  Sign In Now
+                </a>
+              </div>
+              
+              <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+                If you can't click the button, copy and paste this link into your browser:
+                <br>
+                <a href="${url}" style="color: #7c3aed; word-break: break-all;">
+                  ${url}
+                </a>
+              </p>
+
+              <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
+                 This link will expire in 15 minutes.
+              </p>
+            </div>
+            
+            <div style="text-align: center; color: #6b7280; font-size: 14px;">
+              <p>If you didn't request this login, you can safely ignore this email.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.sendEmail({ to, subject, html });
+  }
 }
 
 // Export singleton instance

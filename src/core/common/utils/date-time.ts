@@ -46,6 +46,7 @@ export const formatDate = (date: Date): string => {
 // Seconds
 export const ONE_MINUTE = 60;
 export const FIVE_MINUTES = 60 * 5;
+export const FIFTEEN_MINUTES = 60 * 15;
 export const ONE_HOUR = 60 * 60;
 export const ONE_DAY = 60 * 60 * 24;
 export const SEVEN_DAYS = 60 * 60 * 24 * 7;
