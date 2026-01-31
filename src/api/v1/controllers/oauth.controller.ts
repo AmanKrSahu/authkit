@@ -22,6 +22,7 @@ export class OAuthController {
    *       - OAuth
    *     summary: Google OAuth callback
    *     description: Handles the callback from Google OAuth authentication.
+   *     security: []
    *     responses:
    *       200:
    *         description: OAuth login successful, redirects to frontend

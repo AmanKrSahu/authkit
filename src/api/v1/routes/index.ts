@@ -1,6 +1,9 @@
 import { authenticateJWT } from '@core/common/strategies/jwt.strategy';
+import { Role } from '@prisma/client';
 import { Router } from 'express';
 
+import { roleGuard } from '../middlewares/role.middleware';
+import adminRoutes from './admin.routes';
 import authRoutes from './auth.routes';
 import healthRoutes from './health.routes';
 import mfaRoutes from './mfa.routes';
@@ -20,5 +23,7 @@ router.use('/mfa/', mfaRoutes);
 router.use('/session/', authenticateJWT, sessionRoutes);
 
 router.use('/user/', authenticateJWT, userRoutes);
+
+router.use('/admin/', authenticateJWT, roleGuard(Role.ADMIN), adminRoutes);
 
 export default router;

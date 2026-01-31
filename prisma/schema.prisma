@@ -10,12 +10,18 @@ datasource db {
 // USER & AUTHENTICATION
 // =====================================================
 
+enum Role {
+  USER
+  ADMIN
+}
+
 model User {
   id            String   @id @default(cuid())
   name          String
   email         String   @unique
   emailVerified Boolean  @default(false)
   image         String?
+  role          Role     @default(USER)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

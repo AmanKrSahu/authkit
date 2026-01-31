@@ -21,6 +21,8 @@ export class UserController {
    *       - User
    *     summary: Get current user
    *     description: Retrieves the profile of the currently authenticated user.
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: User retrieved successfully

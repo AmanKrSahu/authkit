@@ -19,6 +19,7 @@ export class HealthController {
    *       - Health
    *     summary: Check system status
    *     description: Returns a simple message indicating the server is running.
+   *     security: []
    *     responses:
    *       200:
    *         description: Server started successfully
@@ -44,6 +45,7 @@ export class HealthController {
    *       - Health
    *     summary: Basic health check
    *     description: Checks the basic health of the application services.
+   *     security: []
    *     responses:
    *       200:
    *         description: Server is healthy
@@ -71,6 +73,7 @@ export class HealthController {
    *       - Health
    *     summary: Detailed health check
    *     description: Provides a detailed health report including external dependencies.
+   *     security: []
    *     responses:
    *       200:
    *         description: Detailed health check completed

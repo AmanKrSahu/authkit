@@ -21,6 +21,8 @@ export class SessionController {
    *       - Session
    *     summary: Get all active sessions
    *     description: Retrieves a list of all active sessions for the current user.
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: Sessions retrieved successfully
@@ -61,6 +63,8 @@ export class SessionController {
    *       - Session
    *     summary: Get session by ID
    *     description: Retrieves details of a specific session.
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: sessionId
@@ -113,6 +117,8 @@ export class SessionController {
    *       - Session
    *     summary: Revoke all other sessions
    *     description: Revokes all active sessions except the current one.
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: All other sessions revoked successfully
@@ -146,6 +152,8 @@ export class SessionController {
    *       - Session
    *     summary: Revoke session by ID
    *     description: Revokes a specific session.
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: sessionId

@@ -14,6 +14,7 @@ const oauthRoutes = Router();
  *       - OAuth
  *     summary: Initiate Google OAuth
  *     description: Redirects the user to Google for authentication.
+ *     security: []
  *     responses:
  *       302:
  *         description: Redirects to Google

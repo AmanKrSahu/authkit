@@ -41,6 +41,7 @@ export class AuthController {
    *       - Auth
    *     summary: Register a new user
    *     description: Creates a new user account and sends a verification email.
+   *     security: []
    *     requestBody:
    *       required: true
    *       content:
@@ -97,6 +98,7 @@ export class AuthController {
    *       - Auth
    *     summary: Verify email address
    *     description: Verifies the user's email address using a code.
+   *     security: []
    *     requestBody:
    *       required: true
    *       content:
@@ -138,6 +140,7 @@ export class AuthController {
    *       - Auth
    *     summary: Resend verification email
    *     description: Resends the verification email to the user's email address.
+   *     security: []
    *     requestBody:
    *       required: true
    *       content:
@@ -180,6 +183,7 @@ export class AuthController {
    *       - Auth
    *     summary: Login user
    *     description: Authenticates a user and returns access/refresh tokens.
+   *     security: []
    *     requestBody:
    *       required: true
    *       content:
@@ -262,6 +266,9 @@ export class AuthController {
    *       - Auth
    *     summary: Logout user
    *     description: Logs out the authenticated user and clears session.
+   *     security:
+   *       - bearerAuth: []
+   *       - csrfAuth: []
    *     responses:
    *       200:
    *         description: Logged out successfully
@@ -297,6 +304,8 @@ export class AuthController {
    *       - Auth
    *     summary: Refresh access token
    *     description: Generates a new access token using a refresh token.
+   *     security:
+   *       - csrfAuth: []
    *     responses:
    *       200:
    *         description: Token refreshed successfully
@@ -342,6 +351,7 @@ export class AuthController {
    *       - Auth
    *     summary: Forgot password
    *     description: Sends a password reset OTP to the user's email.
+   *     security: []
    *     requestBody:
    *       required: true
    *       content:
@@ -386,6 +396,7 @@ export class AuthController {
    *       - Auth
    *     summary: Verify OTP
    *     description: Verifies the OTP sent to the user's email.
+   *     security: []
    *     requestBody:
    *       required: true
    *       content:
@@ -440,6 +451,8 @@ export class AuthController {
    *       - Auth
    *     summary: Reset password
    *     description: Resets the user's password using the verified token.
+   *     security:
+   *       - csrfAuth: []
    *     requestBody:
    *       required: true
    *       content:
@@ -496,6 +509,8 @@ export class AuthController {
    *       - Auth
    *     summary: Change password
    *     description: Changes the user's password.
+   *     security:
+   *       - bearerAuth: []
    *     requestBody:
    *       required: true
    *       content:

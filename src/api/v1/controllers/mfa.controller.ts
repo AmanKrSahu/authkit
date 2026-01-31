@@ -28,6 +28,8 @@ export class MfaController {
    *       - Multi-factor Authentication
    *     summary: Generate MFA setup
    *     description: Generates a QR code for setting up Multi-Factor Authentication.
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: MFA setup generated successfully
@@ -59,6 +61,8 @@ export class MfaController {
    *       - Multi-factor Authentication
    *     summary: Verify MFA setup
    *     description: Verifies the MFA setup using a code and returns backup codes.
+   *     security:
+   *       - bearerAuth: []
    *     requestBody:
    *       required: true
    *       content:
@@ -106,6 +110,8 @@ export class MfaController {
    *       - Multi-factor Authentication
    *     summary: Revoke MFA
    *     description: Revokes the MFA setup for the user.
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: MFA revoked successfully
@@ -134,6 +140,7 @@ export class MfaController {
    *       - Multi-factor Authentication
    *     summary: Verify MFA for login
    *     description: Verifies MFA code during login process.
+   *     security: []
    *     requestBody:
    *       required: true
    *       content:
