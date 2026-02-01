@@ -1,0 +1,65 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    container_name: authkit_api_dev
+    restart: no
+    ports:
+      - '8000:8000'
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "pnpm db:generate && pnpm db:push && pnpm dev"
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    networks:
+      - authkit_network
+
+  redis:
+    image: redis/redis-stack:latest
+    container_name: authkit_redis_dev
+    ports:
+      - '6379:6379'
+      - '8001:8001'
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - authkit_network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: authkit_postgres_dev
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - authkit_network
+
+volumes:
+  redis_data_dev:
+  postgres_data_dev:
+
+networks:
+  authkit_network:
+    driver: bridge
