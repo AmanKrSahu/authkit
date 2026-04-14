@@ -30,6 +30,9 @@
  *               confirmPassword:
  *                 type: string
  *                 format: password
+ *               redirectUrl:
+ *                 type: string
+ *                 format: uri
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -93,6 +96,9 @@
  *               email:
  *                 type: string
  *                 format: email
+ *               redirectUrl:
+ *                 type: string
+ *                 format: uri
  *     responses:
  *       201:
  *         description: Verification email sent successfully

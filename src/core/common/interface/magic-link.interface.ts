@@ -1,6 +1,7 @@
 export interface MagicLinkLoginData {
   email: string;
   uid?: string;
+  redirectUrl?: string;
 }
 
 export interface MagicLinkVerifyData {

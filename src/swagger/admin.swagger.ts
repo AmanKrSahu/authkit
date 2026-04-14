@@ -1,5 +1,82 @@
 /**
  * @openapi
+ * /admin/users:
+ *   get:
+ *     tags:
+ *       - Admin APIs
+ *     summary: Fetch all users
+ *     description: Retrieves a list of all users.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Users retrieved successfully
+ *       403:
+ *         description: Forbidden (Non-admin access)
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @openapi
+ * /admin/users/{userId}:
+ *   get:
+ *     tags:
+ *       - Admin APIs
+ *     summary: Fetch a user by ID
+ *     description: Retrieves details of a specific user.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User retrieved successfully
+ *       400:
+ *         description: Invalid User ID
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @openapi
+ * /admin/sessions/user/{userId}:
+ *   get:
+ *     tags:
+ *       - Admin APIs
+ *     summary: Fetch all sessions of a user
+ *     description: Retrieves all active sessions for a specific user.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User sessions retrieved successfully
+ *       400:
+ *         description: Invalid User ID
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @openapi
  * /admin/users/promote:
  *   post:
  *     tags:
@@ -40,17 +117,12 @@
  *     description: Deletes a user account and all associated data.
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - userId
- *             properties:
- *               userId:
- *                 type: string
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: User deleted successfully
@@ -72,17 +144,12 @@
  *     description: Revokes a specific session.
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - sessionId
- *             properties:
- *               sessionId:
- *                 type: string
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Session revoked successfully
@@ -104,17 +171,12 @@
  *     description: Revokes all active sessions for a specific user.
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - userId
- *             properties:
- *               userId:
- *                 type: string
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: User sessions revoked successfully

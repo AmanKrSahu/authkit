@@ -3,6 +3,8 @@ import crypto from 'node:crypto';
 import type {
   CreateOidcClientData,
   DeleteUserData,
+  GetUserByIdData,
+  GetUserSessionsData,
   PromoteUserToAdminData,
   RevokeSessionByIdData,
   RevokeSessionsByUserIdData,
@@ -172,6 +174,78 @@ export class AdminService {
         throw error;
       }
       throw new AppError('Failed to create OIDC client', HTTPSTATUS.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  public async getAllUsers() {
+    try {
+      const users = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return users.map(user => sanitizeUser(user));
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      throw new AppError('Failed to fetch users', HTTPSTATUS.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  public async getUserById(data: GetUserByIdData) {
+    try {
+      const { userId } = data;
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      return sanitizeUser(user);
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      throw new AppError('Failed to fetch user', HTTPSTATUS.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  public async getUserSessions(data: GetUserSessionsData) {
+    try {
+      const { userId } = data;
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const sessions = await prisma.session.findMany({
+        where: {
+          userId,
+          isRevoked: false,
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Ensure we don't return raw inner token to admins unnecessarily
+      const sanitizedSessions = sessions.map(session => ({
+        ...session,
+        token: undefined,
+      }));
+
+      return sanitizedSessions;
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError('Failed to fetch user sessions', HTTPSTATUS.INTERNAL_SERVER_ERROR);
     }
   }
 }

@@ -60,7 +60,6 @@ export const checkForNewDevice = async (
     where: {
       userId,
       deviceFingerprint,
-      isRevoked: false,
     },
   });
 

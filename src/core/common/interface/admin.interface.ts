@@ -20,3 +20,11 @@ export interface CreateOidcClientData {
   grantTypes?: string[];
   scope?: string;
 }
+
+export interface GetUserByIdData {
+  userId: string;
+}
+
+export interface GetUserSessionsData {
+  userId: string;
+}

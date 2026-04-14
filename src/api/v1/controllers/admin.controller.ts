@@ -1,6 +1,8 @@
 import {
   createOidcClientSchema,
   deleteUserSchema,
+  getUserByIdSchema,
+  getUserSessionsSchema,
   promoteUserSchema,
   revokeSessionByIdSchema,
   revokeSessionsByUserIdSchema,
@@ -33,7 +35,7 @@ export class AdminController {
 
   @AsyncHandler
   public deleteUser = async (req: Request, res: Response) => {
-    const { userId } = deleteUserSchema.parse({ ...req.body });
+    const { userId } = deleteUserSchema.parse({ ...req.params });
 
     await this.adminService.deleteUser({ userId });
 
@@ -45,7 +47,7 @@ export class AdminController {
 
   @AsyncHandler
   public revokeSessionById = async (req: Request, res: Response) => {
-    const { sessionId } = revokeSessionByIdSchema.parse({ ...req.body });
+    const { sessionId } = revokeSessionByIdSchema.parse({ ...req.params });
 
     await this.adminService.revokeSessionById({ sessionId });
 
@@ -57,7 +59,7 @@ export class AdminController {
 
   @AsyncHandler
   public revokeSessionsByUserId = async (req: Request, res: Response) => {
-    const { userId } = revokeSessionsByUserIdSchema.parse({ ...req.body });
+    const { userId } = revokeSessionsByUserIdSchema.parse({ ...req.params });
 
     await this.adminService.revokeSessionsByUserId({ userId });
 
@@ -77,6 +79,43 @@ export class AdminController {
       success: true,
       message: 'OIDC Client registered successfully',
       data: { client },
+    });
+  };
+
+  @AsyncHandler
+  public getAllUsers = async (_req: Request, res: Response) => {
+    const users = await this.adminService.getAllUsers();
+
+    return res.status(HTTPSTATUS.OK).json({
+      success: true,
+      message: 'Users retrieved successfully',
+      data: { users },
+    });
+  };
+
+  @AsyncHandler
+  public getUserById = async (req: Request, res: Response) => {
+    const { userId } = getUserByIdSchema.parse({ ...req.params });
+
+    const user = await this.adminService.getUserById({ userId });
+
+    return res.status(HTTPSTATUS.OK).json({
+      success: true,
+      message: 'User retrieved successfully',
+      data: { user },
+    });
+  };
+
+  @AsyncHandler
+  public getUserSessions = async (req: Request, res: Response) => {
+    const { userId } = getUserSessionsSchema.parse({ ...req.params });
+
+    const sessions = await this.adminService.getUserSessions({ userId });
+
+    return res.status(HTTPSTATUS.OK).json({
+      success: true,
+      message: 'User sessions retrieved successfully',
+      data: { sessions },
     });
   };
 }

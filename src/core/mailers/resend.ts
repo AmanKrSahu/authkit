@@ -1,5 +1,6 @@
 import { formatDate } from '@core/common/utils/date-time';
 import { logger } from '@core/common/utils/logger';
+import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { config } from '@core/config/app.config';
 import { Resend } from 'resend';
 
@@ -284,11 +285,11 @@ export class EmailService {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${config.FRONTEND_ORIGINS[0]}/account/security" 
+                <a href="${getValidRedirectUrl()}/account/security" 
                    style="display: inline-block; background-color: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-right: 10px;">
                   Review Security Settings
                 </a>
-                <a href="${config.FRONTEND_ORIGINS[0]}/account/sessions" 
+                <a href="${getValidRedirectUrl()}/account/sessions" 
                    style="display: inline-block; background-color: #6b7280; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
                   Manage Sessions
                 </a>
