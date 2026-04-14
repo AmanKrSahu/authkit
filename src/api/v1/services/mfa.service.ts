@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 
+import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
 import type {
   GenerateMFASetupData,
   RevokeMFAData,
@@ -19,8 +20,7 @@ import {
   generateDeviceFingerprint,
   generateSessionToken,
 } from '@core/common/utils/crypto';
-import { sevenDaysFromNow } from '@core/common/utils/date-time';
-import { ONE_HOUR } from '@core/common/utils/date-time';
+import { calculateExpirationDate, ONE_HOUR } from '@core/common/utils/date-time';
 import type { MFATPayload } from '@core/common/utils/jwt';
 import {
   mfaTokenSignOptions,
@@ -42,14 +42,14 @@ import { EmailService } from '@core/mailers/resend';
 import qrcode from 'qrcode';
 import speakeasy from 'speakeasy';
 
+import { RATE_LIMIT } from '../../../core/common/constants/rate-limit.constant';
+
 export class MfaService {
   private emailService: EmailService;
 
   constructor() {
     this.emailService = new EmailService();
   }
-
-  private readonly MAX_MFA_LOGIN_ATTEMPTS = 5;
 
   public async generateMFASetup(generateMFASetupData: GenerateMFASetupData) {
     try {
@@ -208,7 +208,7 @@ export class MfaService {
       const mfaAttempts = await checkMfaRateLimit(
         user.email,
         ipAddress,
-        this.MAX_MFA_LOGIN_ATTEMPTS
+        RATE_LIMIT.MFA.MAX_ATTEMPTS
       );
 
       let isValid = false;
@@ -241,7 +241,7 @@ export class MfaService {
       }
 
       if (!isValid) {
-        const remainingAttempts = this.MAX_MFA_LOGIN_ATTEMPTS - (mfaAttempts + 1);
+        const remainingAttempts = RATE_LIMIT.MFA.MAX_ATTEMPTS - (mfaAttempts + 1);
 
         await incrementMfaRateLimit(user.email, ipAddress);
 
@@ -254,7 +254,7 @@ export class MfaService {
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);
 
       const sessionToken = generateSessionToken();
-      const expiresAt = sevenDaysFromNow();
+      const expiresAt = calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN);
 
       const session = await prisma.$transaction(async tx => {
         if (newBackupCodes) {

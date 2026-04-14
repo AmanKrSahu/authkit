@@ -13,3 +13,10 @@ export interface RevokeSessionByIdData {
 export interface RevokeSessionsByUserIdData {
   userId: string;
 }
+
+export interface CreateOidcClientData {
+  clientName: string;
+  redirectUrls: string[];
+  grantTypes?: string[];
+  scope?: string;
+}

@@ -1,10 +1,14 @@
+import crypto from 'node:crypto';
+
 import type {
+  CreateOidcClientData,
   DeleteUserData,
   PromoteUserToAdminData,
   RevokeSessionByIdData,
   RevokeSessionsByUserIdData,
 } from '@core/common/interface/admin.interface';
 import { AppError, NotFoundException } from '@core/common/utils/app-error';
+import { hashPassword } from '@core/common/utils/bcrypt';
 import { deleteCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
@@ -132,6 +136,42 @@ export class AdminService {
         throw error;
       }
       throw new AppError('Failed to revoke user sessions', HTTPSTATUS.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  public async createOidcClient(data: CreateOidcClientData) {
+    try {
+      const { clientName, redirectUrls, grantTypes, scope } = data;
+
+      const clientId = crypto.randomBytes(32).toString('hex');
+      const clientSecret = crypto.randomBytes(32).toString('hex');
+      const hashedSecret = await hashPassword(clientSecret);
+
+      const oidcClient = await prisma.oidcClient.create({
+        data: {
+          clientId,
+          clientName,
+          clientSecret: hashedSecret,
+          redirectUrls,
+          grantTypes,
+          scope,
+        },
+      });
+
+      return {
+        id: oidcClient.id,
+        clientId,
+        clientName: oidcClient.clientName,
+        clientSecret,
+        redirectUrls: oidcClient.redirectUrls,
+        grantTypes: oidcClient.grantTypes,
+        scope: oidcClient.scope,
+      };
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError('Failed to create OIDC client', HTTPSTATUS.INTERNAL_SERVER_ERROR);
     }
   }
 }

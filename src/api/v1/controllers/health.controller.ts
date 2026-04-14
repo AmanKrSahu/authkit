@@ -11,23 +11,6 @@ export class HealthController {
     this.healthService = healthService;
   }
 
-  /**
-   * @openapi
-   * /:
-   *   get:
-   *     tags:
-   *       - Health
-   *     summary: Check system status
-   *     description: Returns a simple message indicating the server is running.
-   *     security: []
-   *     responses:
-   *       200:
-   *         description: Server started successfully
-   *       500:
-   *         description: Internal server error
-   *       503:
-   *         description: Service unavailable
-   */
   @AsyncHandler
   public initialise = async (_req: Request, res: Response) => {
     return res.status(HTTPSTATUS.OK).json({
@@ -37,23 +20,6 @@ export class HealthController {
     });
   };
 
-  /**
-   * @openapi
-   * /health:
-   *   get:
-   *     tags:
-   *       - Health
-   *     summary: Basic health check
-   *     description: Checks the basic health of the application services.
-   *     security: []
-   *     responses:
-   *       200:
-   *         description: Server is healthy
-   *       500:
-   *         description: Internal server error
-   *       503:
-   *         description: Service unavailable
-   */
   @AsyncHandler
   public health = async (_req: Request, res: Response) => {
     const healthData = await this.healthService.getBasicHealth();
@@ -65,23 +31,6 @@ export class HealthController {
     });
   };
 
-  /**
-   * @openapi
-   * /health/detailed:
-   *   get:
-   *     tags:
-   *       - Health
-   *     summary: Detailed health check
-   *     description: Provides a detailed health report including external dependencies.
-   *     security: []
-   *     responses:
-   *       200:
-   *         description: Detailed health check completed
-   *       500:
-   *         description: Internal server error
-   *       503:
-   *         description: Service unavailable
-   */
   @AsyncHandler
   public detailedHealth = async (_req: Request, res: Response) => {
     const detailedHealthData = await this.healthService.getDetailedHealth();

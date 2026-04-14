@@ -39,8 +39,17 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "prisma.config.ts", "tsup.config.ts"],
+
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "prisma.config.ts",
+    "tsup.config.ts",
+    "scripts/**/*.ts"
+  ],
+
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts"],
+
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": "node"

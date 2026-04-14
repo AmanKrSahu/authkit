@@ -1,3 +1,4 @@
+import { OidcService } from '@api/v1/services/oidc.service';
 import { AppError } from '@core/common/utils/app-error';
 import {
   setAuthenticationCookies,
@@ -17,40 +18,13 @@ import { MagicLinkService } from '../services/magic-link.service';
 
 export class MagicLinkController {
   private magicLinkService: MagicLinkService;
+  private oidcService: OidcService;
 
-  constructor(magicLinkService: MagicLinkService) {
+  constructor(magicLinkService: MagicLinkService, oidcService: OidcService) {
     this.magicLinkService = magicLinkService;
+    this.oidcService = oidcService;
   }
 
-  /**
-   * @openapi
-   * /magic-link/login:
-   *   post:
-   *     tags:
-   *       - Magic Link
-   *     summary: Login with Magic Link
-   *     description: Sends a magic link to the user's email address.
-   *     security: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - email
-   *             properties:
-   *               email:
-   *                 type: string
-   *                 format: email
-   *     responses:
-   *       200:
-   *         description: Magic link sent successfully
-   *       400:
-   *         description: Invalid input data
-   *       500:
-   *         description: Internal server error
-   */
   @AsyncHandler
   public login = async (req: Request, res: Response) => {
     const body = loginMagicLinkSchema.parse({ ...req.body });
@@ -63,36 +37,6 @@ export class MagicLinkController {
     });
   };
 
-  /**
-   * @openapi
-   * /magic-link/verify:
-   *   post:
-   *     tags:
-   *       - Magic Link
-   *     summary: Verify Magic Link
-   *     description: Verifies the magic link token and authenticates the user.
-   *     security: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - token
-   *             properties:
-   *               token:
-   *                 type: string
-   *     responses:
-   *       200:
-   *         description: Login successful
-   *       400:
-   *         description: Invalid or expired token
-   *       404:
-   *         description: User not found
-   *       500:
-   *         description: Internal server error
-   */
   @AsyncHandler
   public verify = async (req: Request, res: Response) => {
     const userAgent = getUserAgent(req);
@@ -100,7 +44,7 @@ export class MagicLinkController {
 
     const body = verifyMagicLinkSchema.parse({ ...req.body });
 
-    const { user, mfaRequired, accessToken, refreshToken, mfaLoginToken } =
+    const { user, mfaRequired, accessToken, refreshToken, mfaLoginToken, uid } =
       await this.magicLinkService.verify({
         ...body,
         userAgent,
@@ -119,7 +63,13 @@ export class MagicLinkController {
         success: true,
         message: 'MFA verification required',
         data: { user },
+        uid,
       });
+    }
+
+    if (uid) {
+      await this.oidcService.submitLogin(req, res, user.id);
+      return;
     }
 
     const csrfToken = crypto.randomUUID();

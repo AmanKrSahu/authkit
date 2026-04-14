@@ -1,7 +1,8 @@
+import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
 import type { LoginWithGoogleData } from '@core/common/interface/oauth.interface';
 import { AppError, BadRequestException } from '@core/common/utils/app-error';
 import { generateDeviceFingerprint, generateSessionToken } from '@core/common/utils/crypto';
-import { sevenDaysFromNow } from '@core/common/utils/date-time';
+import { calculateExpirationDate } from '@core/common/utils/date-time';
 import { refreshTokenSignOptions, signJwtToken } from '@core/common/utils/jwt';
 import { checkForNewDevice } from '@core/common/utils/metadata';
 import { sanitizeUser } from '@core/common/utils/sanitize';
@@ -88,7 +89,7 @@ export class OAuthService {
       const isNewDevice = await checkForNewDevice(result.user.id, deviceFingerprint);
 
       const sessionToken = generateSessionToken();
-      const expiresAt = sevenDaysFromNow();
+      const expiresAt = calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN);
 
       const session = await prisma.session.create({
         data: {

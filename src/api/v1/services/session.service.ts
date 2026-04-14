@@ -6,7 +6,10 @@ import type {
 } from '@core/common/interface/session.interface';
 import { AppError, NotFoundException } from '@core/common/utils/app-error';
 import { isTokenExpired } from '@core/common/utils/crypto';
+import type { RefreshTPayload } from '@core/common/utils/jwt';
+import { refreshTokenSignOptions, verifyJwtToken } from '@core/common/utils/jwt';
 import { deleteCache, getCache } from '@core/common/utils/redis-helpers';
+import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 
@@ -170,6 +173,32 @@ export class SessionService {
         throw error;
       }
       throw new AppError('Failed to revoke session', HTTPSTATUS.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  public async validateSession(refreshToken: string) {
+    try {
+      const { payload } = verifyJwtToken<RefreshTPayload>(refreshToken, {
+        secret: refreshTokenSignOptions.secret,
+      });
+
+      if (!payload) {
+        return null; // Invalid token signature
+      }
+
+      const session = await prisma.session.findUnique({
+        where: { id: payload.sessionId },
+        include: { user: true },
+      });
+
+      if (!session || session.isRevoked || isTokenExpired(session.expiresAt)) {
+        return null; // Session invalid or expired
+      }
+
+      const { ...userInfo } = session.user;
+      return sanitizeUser(userInfo);
+    } catch {
+      return null; // Any error (token malformed, etc) means invalid session
     }
   }
 }

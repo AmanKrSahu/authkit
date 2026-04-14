@@ -1,5 +1,6 @@
 export interface MagicLinkLoginData {
   email: string;
+  uid?: string;
 }
 
 export interface MagicLinkVerifyData {

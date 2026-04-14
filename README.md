@@ -3,6 +3,14 @@
 <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" /> <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" /> <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" />
 <img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" /> <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" /> <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" /> <img src="https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black" /> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
 
+## Table of Contents
+
+- [1. Project Abstract](#1-project-abstract)
+- [2. Tech Stack](#2-tech-stack-short-highlight)
+- [3. Developer Setup](#3-developer-setup)
+- [4. Core Architecture & Security Overview](#4-core-architecture--security-overview)
+- [5. API Endpoints Overview](#5-api-endpoints-overview)
+
 ## 1. Project Abstract
 
 AuthKit is a robust, production-ready authentication and user management microservice designed to simplify secure identity management for modern applications. It provides a comprehensive set of features including JWT-based authentication, multi-factor authentication (MFA), OAuth integration, and session management, allowing developers to focus on building core product features rather than reinventing security flows.
@@ -58,7 +66,14 @@ AuthKit is a robust, production-ready authentication and user management microse
     cp .env.example .env
     ```
 
-3.  Build and run the services:
+3.  Generate secure tokens and JWKs:
+
+    ```bash
+    pnpm generate:secrets
+    # Copy the output values from generated-secrets.json into your .env file.
+    ```
+
+4.  Build and run the services:
 
     ```bash
     docker-compose -f docker-compose.dev.yml up --build -d
@@ -90,7 +105,14 @@ AuthKit is a robust, production-ready authentication and user management microse
     cp .env.example .env
     ```
 
-3.  Run Migrations & Seeds:
+3.  Generate secure tokens and JWKs:
+
+    ```bash
+    pnpm generate:secrets
+    # Copy the output values from generated-secrets.json into your .env file.
+    ```
+
+4.  Run Migrations & Seeds:
 
     ```bash
     pnpm db:generate
@@ -99,7 +121,7 @@ AuthKit is a robust, production-ready authentication and user management microse
 
     _(Optional) Seed data if available:_ `pnpm db:seed`
 
-4.  Start the application:
+5.  Start the application:
     ```bash
     pnpm dev
     ```
@@ -143,11 +165,13 @@ We have detailed documentation for all API endpoints, including request schemas 
 
 | Domain           | Description                                     |
 | :--------------- | :---------------------------------------------- |
+| **Health**       | API Health & Dependency Checks                  |
 | **Auth**         | Registration, Login, Logout, MFA, Password Mgmt |
 | **OAuth**        | Google Social Login                             |
 | **Magic Link**   | Passwordless Login                              |
 | **User/Session** | Profile & Active Session Management             |
-| **Admin**        | User Moderation & System Ops                    |
+| **Admin**        | User Moderation, IdP Clients & System Ops       |
+| **OIDC (IdP)**   | Identity Provider Endpoints (Auth, Token, Keys) |
 
 > **Note**: For a complete and up-to-date API reference, please consult the Swagger / OpenAPI documentation.
 

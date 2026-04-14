@@ -21,16 +21,9 @@ const appConfig = () => ({
 
   JWT: {
     SECRET: getEnvironment('JWT_SECRET'),
-    EXPIRES_IN: getEnvironment('JWT_EXPIRES_IN', '15m'),
-
     REFRESH_SECRET: getEnvironment('JWT_REFRESH_SECRET'),
-    REFRESH_EXPIRES_IN: getEnvironment('JWT_REFRESH_EXPIRES_IN', '7d'),
-
     RESET_SECRET: getEnvironment('JWT_RESET_SECRET'),
-    RESET_EXPIRES_IN: getEnvironment('JWT_RESET_EXPIRES_IN', '10m'),
-
     MFA_LOGIN_SECRET: getEnvironment('JWT_MFA_LOGIN_SECRET'),
-    MFA_LOGIN_EXPIRES_IN: getEnvironment('JWT_MFA_LOGIN_EXPIRES_IN', '5m'),
   },
 
   RESEND_API_KEY: getEnvironment('RESEND_API_KEY', ''),
@@ -40,6 +33,18 @@ const appConfig = () => ({
     'AUTHENTICATOR_APP_SECRET',
     'authenticator-app-secret-dev'
   ),
+
+  OIDC: {
+    COOKIE_KEYS: getEnvironment('OIDC_COOKIE_KEYS').split(','),
+    JWKS: (() => {
+      const jwksEnv = getEnvironment('OIDC_JWKS');
+      try {
+        return JSON.parse(jwksEnv);
+      } catch {
+        throw new Error('Failed to parse OIDC_JWKS environment variable.');
+      }
+    })(),
+  },
 });
 
 export const config = appConfig();

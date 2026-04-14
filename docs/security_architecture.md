@@ -65,7 +65,7 @@ While JWTs are stateless, we track **Sessions** in the database to allow for imm
 We use **Redis** to implement sliding-window rate limiting.
 
 - **Global Limiter:** Protects the entire API from DDoS attacks (e.g., 100 requests/15min).
-- **Auth Limiter:** stricter limits on `/auth/*` endpoints (e.g., Login, Register) to prevent Brute Force and Credential Stuffing attacks.
+- **Auth Limiter:** Stricter limits on `/auth/*` endpoints (e.g., Login, Register) to prevent Brute Force and Credential Stuffing attacks.
 - **MFA/OTP Limiter:** Very strict limits (e.g., 3-5 attempts) on OTP verification to prevent guessing.
 
 ### 2.3. Data Sanitization
@@ -81,6 +81,37 @@ To prevent **Data Leakage**, we strictly sanitize objects before returning them 
   - `sessions`
 - **Benefit:** Ensures that even if a developer accidentally returns a full User object, the sensitive data is stripped out before it reaches the client.
 
+### 2.4. OpenID Connect (OIDC) Security
+
+Our OIDC Provider implementation adheres to strict security standards to safely act as an Identity Provider.
+
+- **PKCE Enforcement:** Proof Key for Code Exchange (RFC 7636) is **mandatory** for all clients. This prevents authorization code interception attacks.
+- **Client Secret Hashing:** Client secrets are never stored in plaintext. They are hashed using **bcrypt** (cost 12), ensuring that even a database compromise does not leak usable secrets.
+- **Pairwise Pseudonymous Identifiers (PPI):** (Optional/Configurable) Can be used to prevent correlation of users across different clients.
+- **Interaction Security:**
+  - **Strict Cookie Policy:** Interaction session cookies are `HttpOnly`, `Signed`, and `SameSite=Lax`.
+  - **Short-Lived Sessions:** Interaction sessions expire quickly (e.g., 15 minutes) to reduce the attack window.
+- **Token Rotation:** Refresh Tokens issued via OIDC are rotated upon use, detecting and preventing token theft and replay.
+- **Context Preservation:** We strictly bind external authentication flows (Google, Magic Link) to the initiating OIDC transaction using the `uid` parameter (via OAuth `state` or Redis). This prevents session injection attacks where a user starts a flow in one context and finishes it in another.
+- **MFA Enforcement:** Multi-Factor Authentication is enforced _within_ the OIDC interaction pipeline. If a user has MFA enabled, the OIDC flow halts until a valid TOTP code is provided, preventing bypass via single-factor entry points.
+
+### 2.5. Session Bridging & Unified Identity
+
+To provide a seamless Single Sign-On (SSO) experience, we implement a **Session Bridge** between our Direct API authentication and OIDC flows.
+
+- **Mechanism:** The OIDC interaction endpoint checks for the presence of a valid `refreshToken` cookie (used by the Direct API).
+- **Validation:** It uses `SessionService.validateSession` to cryptographically verify the token and check the database for revocation or expiration.
+- **Safety:** This validation is **read-only** and does not rotate the token, ensuring the original session remains undisturbed while establishing a new OIDC session.
+- **Result:** Users authenticated on the main platform are automatically authenticated for any OIDC client without re-entering credentials.
+
+### 2.6. Secure Secret & Key Generation
+
+To ensure robust cryptographic security, AuthKit includes an automated script (`pnpm generate:secrets`) that securely generates:
+
+1. **JWT & Session Secrets**: Cryptographically secure 256-bit random strings using `node:crypto`.
+2. **OIDC JWKS**: A securely generated RS256 keypair (using `jose`) for signing OIDC tokens.
+   By keeping secret generation automated, we reduce the risk of weak, manually chosen passwords or keys being used in production.
+
 ---
 
 ## 3. The Role of Redis
@@ -89,27 +120,6 @@ Redis acts as a high-performance "Speed Layer" that facilitates security feature
 
 | Feature              | How Redis is Used                                                                                               | Benefit                                                                                          |
 | :------------------- | :-------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
-| **Session Caching**  | Stores active user sessions (JSON). The JWT Strategy checks Redis _first_ before hitting the DB.                | drastic reduction in DB load; sub-millisecond authentication checks.                             |
+| **Session Caching**  | Stores active user sessions (JSON). The JWT Strategy checks Redis _first_ before hitting the DB.                | Drastic reduction in DB load; sub-millisecond authentication checks.                             |
 | **Rate Limiting**    | Stores counters and expiry times for IP addresses.                                                              | Atomic increments prevent race conditions; extremely fast.                                       |
 | **Ephemeral Tokens** | Stores short-lived tokens: <br> - MFA Setup Secrets <br> - Email Verification Tokens <br> - Password Reset OTPs | Automatic expiration (TTL) handles cleanup; data is never persisted to disk (DB) until verified. |
-
----
-
-## 4. Summary of Authentication Workflow
-
-1.  **User Logs In (without MFA):**
-    - Server verifies credentials.
-    - Creates Session in DB & Redis.
-    - Generates Access Token (returned in Body).
-    - Generates Refresh Token (returned in `HttpOnly` Cookie).
-    - Generates CSRF Token (returned in Readable Cookie).
-2.  **User Makes Request:**
-    - Client adds `Authorization: Bearer <token>`.
-    - Client adds `x-csrf-token` header (from cookie).
-    - Server validates Access Token signature + expiration.
-3.  **Access Token Expires:**
-    - Client hits `/refresh-token`.
-    - Browser sends Refresh Token cookie.
-    - Client sends `x-csrf-token` header.
-    - Server verifies Refresh Token against Redis/DB Session.
-    - If valid, Server rotates tokens and returns new Access Token.

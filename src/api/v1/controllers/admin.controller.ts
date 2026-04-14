@@ -1,4 +1,5 @@
 import {
+  createOidcClientSchema,
   deleteUserSchema,
   promoteUserSchema,
   revokeSessionByIdSchema,
@@ -17,37 +18,6 @@ export class AdminController {
     this.adminService = adminService;
   }
 
-  /**
-   * @openapi
-   * /admin/users/promote:
-   *   post:
-   *     tags:
-   *       - Admin
-   *     summary: Promote a user to Admin
-   *     description: Promotes an existing user to the ADMIN role.
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - userId
-   *             properties:
-   *               userId:
-   *                 type: string
-   *     responses:
-   *       200:
-   *         description: User promoted successfully
-   *       400:
-   *         description: Invalid input or user not found
-   *       403:
-   *         description: Forbidden (Non-admin access)
-   *       500:
-   *         description: Internal server error
-   */
   @AsyncHandler
   public promoteUserToAdmin = async (req: Request, res: Response) => {
     const body = promoteUserSchema.parse({ ...req.body });
@@ -61,37 +31,6 @@ export class AdminController {
     });
   };
 
-  /**
-   * @openapi
-   * /admin/users/{userId}:
-   *   delete:
-   *     tags:
-   *       - Admin
-   *     summary: Delete a user
-   *     description: Deletes a user account and all associated data.
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - userId
-   *             properties:
-   *               userId:
-   *                 type: string
-   *     responses:
-   *       200:
-   *         description: User deleted successfully
-   *       400:
-   *         description: Invalid User ID
-   *       403:
-   *         description: Forbidden
-   *       500:
-   *         description: Internal server error
-   */
   @AsyncHandler
   public deleteUser = async (req: Request, res: Response) => {
     const { userId } = deleteUserSchema.parse({ ...req.body });
@@ -104,37 +43,6 @@ export class AdminController {
     });
   };
 
-  /**
-   * @openapi
-   * /admin/sessions/{sessionId}:
-   *   delete:
-   *     tags:
-   *       - Admin
-   *     summary: Revoke session by ID
-   *     description: Revokes a specific session.
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - sessionId
-   *             properties:
-   *               sessionId:
-   *                 type: string
-   *     responses:
-   *       200:
-   *         description: Session revoked successfully
-   *       400:
-   *         description: Invalid Session ID
-   *       403:
-   *         description: Forbidden
-   *       500:
-   *         description: Internal server error
-   */
   @AsyncHandler
   public revokeSessionById = async (req: Request, res: Response) => {
     const { sessionId } = revokeSessionByIdSchema.parse({ ...req.body });
@@ -147,37 +55,6 @@ export class AdminController {
     });
   };
 
-  /**
-   * @openapi
-   * /admin/sessions/user/{userId}:
-   *   delete:
-   *     tags:
-   *       - Admin
-   *     summary: Revoke all sessions for a user
-   *     description: Revokes all active sessions for a specific user.
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - userId
-   *             properties:
-   *               userId:
-   *                 type: string
-   *     responses:
-   *       200:
-   *         description: User sessions revoked successfully
-   *       400:
-   *         description: Invalid User ID
-   *       403:
-   *         description: Forbidden
-   *       500:
-   *         description: Internal server error
-   */
   @AsyncHandler
   public revokeSessionsByUserId = async (req: Request, res: Response) => {
     const { userId } = revokeSessionsByUserIdSchema.parse({ ...req.body });
@@ -187,6 +64,19 @@ export class AdminController {
     return res.status(HTTPSTATUS.OK).json({
       success: true,
       message: 'User sessions revoked successfully',
+    });
+  };
+
+  @AsyncHandler
+  public registerOidcClient = async (req: Request, res: Response) => {
+    const body = createOidcClientSchema.parse({ ...req.body });
+
+    const client = await this.adminService.createOidcClient(body);
+
+    return res.status(HTTPSTATUS.CREATED).json({
+      success: true,
+      message: 'OIDC Client registered successfully',
+      data: { client },
     });
   };
 }
