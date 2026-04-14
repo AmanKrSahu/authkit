@@ -22,6 +22,9 @@
  *               uid:
  *                 type: string
  *                 description: Optional OIDC interaction UID
+ *               redirectUrl:
+ *                 type: string
+ *                 format: uri
  *     responses:
  *       200:
  *         description: Magic link sent successfully

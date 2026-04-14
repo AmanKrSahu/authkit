@@ -11,6 +11,18 @@
  *           - openid
  *           - profile
  *           - email
+ *     parameters:
+ *       - in: query
+ *         name: redirectUrl
+ *         schema:
+ *           type: string
+ *           format: uri
+ *         description: Optional redirect URL to return to after login
+ *       - in: query
+ *         name: uid
+ *         schema:
+ *           type: string
+ *         description: Optional OIDC interaction UID
  *     responses:
  *       302:
  *         description: Redirect to Google Login

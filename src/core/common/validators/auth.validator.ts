@@ -32,6 +32,7 @@ export const registerSchema = z
     email: emailSchema,
     password: passwordSchema,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
+    redirectUrl: z.string().url('Invalid redirect URL').optional(),
   })
   .refine(data => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -44,6 +45,7 @@ export const verifyEmailSchema = z.object({
 
 export const resendVerificationSchema = z.object({
   email: emailSchema,
+  redirectUrl: z.string().url('Invalid redirect URL').optional(),
 });
 
 export const loginSchema = z.object({

@@ -2,7 +2,7 @@ import { OidcService } from '@api/v1/services/oidc.service';
 import { GoogleProfile } from '@core/common/interface/oauth.interface';
 import { setAuthenticationCookies, setCsrfCookie } from '@core/common/utils/cookie';
 import { getClientIP, getUserAgent } from '@core/common/utils/metadata';
-import { config } from '@core/config/app.config';
+import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { AsyncHandler } from '@core/decorator/async-handler.decorator';
 import type { Request, Response } from 'express';
 
@@ -31,13 +31,15 @@ export class OAuthController {
 
     // Check if we are in an OIDC interaction
     const state = req.query.state as string;
+    let redirectUrl;
     if (state) {
       try {
-        const { uid } = JSON.parse(state);
-        if (uid) {
+        const parsed = JSON.parse(state);
+        if (parsed.uid) {
           await this.oidcService.submitLogin(req, res, user.id);
           return;
         }
+        redirectUrl = parsed.redirectUrl;
       } catch {
         // Ignore JSON parse errors, treat as normal flow
       }
@@ -51,7 +53,7 @@ export class OAuthController {
     });
     setCsrfCookie({ res, csrfToken });
 
-    // It assumes that the dashboard is at the second origin
-    return res.redirect(`${config.FRONTEND_ORIGINS[1]}?status=success`);
+    const baseUrl = getValidRedirectUrl(redirectUrl);
+    return res.redirect(`${baseUrl}?status=success`);
   };
 }

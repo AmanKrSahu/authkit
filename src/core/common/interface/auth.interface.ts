@@ -3,6 +3,7 @@ export interface RegisterData {
   email: string;
   password: string;
   confirmPassword: string;
+  redirectUrl?: string;
 }
 
 export interface VerifyEmailData {
@@ -11,6 +12,7 @@ export interface VerifyEmailData {
 
 export interface ResendVerificationData {
   email: string;
+  redirectUrl?: string;
 }
 
 export interface LoginData {

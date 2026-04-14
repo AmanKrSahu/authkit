@@ -15,6 +15,7 @@ import { logger } from '@core/common/utils/logger';
 import { checkForNewDevice } from '@core/common/utils/metadata';
 import { deleteCache, getCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
+import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
@@ -29,7 +30,7 @@ export class MagicLinkService {
 
   public async login(magicLinkLoginData: MagicLinkLoginData) {
     try {
-      const { email, uid } = magicLinkLoginData;
+      const { email, uid, redirectUrl } = magicLinkLoginData;
 
       const user = await prisma.user.findUnique({
         where: { email },
@@ -45,7 +46,8 @@ export class MagicLinkService {
       const data = JSON.stringify({ email, uid });
       await setCache(`magic_link:${token}`, data, FIFTEEN_MINUTES);
 
-      const magicLinkUrl = `${config.FRONTEND_ORIGINS[0]}/auth/magic-link/verify?token=${token}`;
+      const baseUrl = getValidRedirectUrl(redirectUrl);
+      const magicLinkUrl = `${baseUrl}/auth/magic-link/verify?token=${token}`;
 
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendMagicLink(email, magicLinkUrl, user.name);

@@ -38,7 +38,8 @@ All endpoints listed below are relative to this base path.
   "name": "John Doe",
   "email": "john@example.com",
   "password": "strongPassword123",
-  "confirmPassword": "strongPassword123"
+  "confirmPassword": "strongPassword123",
+  "redirectUrl": "https://example.com/optional"
 }
 ```
 
@@ -147,6 +148,21 @@ All endpoints listed below are relative to this base path.
 }
 ```
 
+### 2.10. Resend Verification Email
+
+- **Route**: `POST /auth/resend-verification`
+- **Description**: Resends the verification email to the user's email address.
+- **Security**: Public
+
+**Request Body**
+
+```json
+{
+  "email": "john@example.com",
+  "redirectUrl": "https://example.com/optional"
+}
+```
+
 ---
 
 ## 3. OAuth (`/oauth`)
@@ -154,7 +170,7 @@ All endpoints listed below are relative to this base path.
 ### 3.1. Google Login
 
 - **Route**: `GET /oauth/google`
-- **Description**: Redirects the user to Google for authentication.
+- **Description**: Redirects the user to Google for authentication. Accepts optional query parameters `?redirectUrl=https...` and `?uid=...`.
 - **Security**: Public
 
 ### 3.2. Google Callback
@@ -178,7 +194,8 @@ All endpoints listed below are relative to this base path.
 ```json
 {
   "email": "john@example.com",
-  "uid": "optional_oidc_interaction_uid"
+  "uid": "optional_oidc_interaction_uid",
+  "redirectUrl": "https://example.com/optional"
 }
 ```
 
@@ -302,13 +319,7 @@ All endpoints listed below are relative to this base path.
 - **Description**: Deletes a user account and all associated data.
 - **Security**: Bearer Token (Admin role)
 
-**Request Body**
-
-```json
-{
-  "userId": "uuid-string"
-}
-```
+**Request Body**: None
 
 ### 7.3. Revoke Session by ID (Admin)
 
@@ -316,13 +327,7 @@ All endpoints listed below are relative to this base path.
 - **Description**: Revokes any session by its ID.
 - **Security**: Bearer Token (Admin role)
 
-**Request Body**
-
-```json
-{
-  "sessionId": "uuid-string"
-}
-```
+**Request Body**: None
 
 ### 7.4. Revoke All Sessions of a User (Admin)
 
@@ -330,13 +335,7 @@ All endpoints listed below are relative to this base path.
 - **Description**: Revokes all sessions for a specific user.
 - **Security**: Bearer Token (Admin role)
 
-**Request Body**
-
-```json
-{
-  "userId": "uuid-string"
-}
-```
+**Request Body**: None
 
 ### 7.5. Register OIDC Client
 
@@ -354,6 +353,30 @@ All endpoints listed below are relative to this base path.
   "scope": "openid profile email"
 }
 ```
+
+### 7.6. Fetch All Users
+
+- **Route**: `GET /admin/users`
+- **Description**: Retrieves a list of all users.
+- **Security**: Bearer Token (Admin role)
+
+**Request Body**: None
+
+### 7.7. Fetch A Specific User
+
+- **Route**: `GET /admin/users/:userId`
+- **Description**: Retrieves details of a specific user.
+- **Security**: Bearer Token (Admin role)
+
+**Request Body**: None
+
+### 7.8. Fetch User Sessions
+
+- **Route**: `GET /admin/sessions/user/:userId`
+- **Description**: Retrieves all active sessions for a specific user.
+- **Security**: Bearer Token (Admin role)
+
+**Request Body**: None
 
 ---
 

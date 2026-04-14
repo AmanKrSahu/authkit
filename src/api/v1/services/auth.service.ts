@@ -39,6 +39,7 @@ import { logger } from '@core/common/utils/logger';
 import { checkForNewDevice, checkRateLimit } from '@core/common/utils/metadata';
 import { deleteCache, getCache, incrementCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
+import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
@@ -55,7 +56,7 @@ export class AuthService {
 
   public async register(registerData: RegisterData) {
     try {
-      const { email, password, name } = registerData;
+      const { email, password, name, redirectUrl } = registerData;
 
       const existingUser = await prisma.user.findUnique({
         where: { email },
@@ -96,7 +97,8 @@ export class AuthService {
       // Store verification token in Redis: key="verify_email:<token>", value=email
       await setCache(`verify_email:${verificationToken}`, email, ONE_DAY);
 
-      const verificationUrl = `${config.FRONTEND_ORIGINS[0]}/auth/verify-email?token=${verificationToken}`;
+      const baseUrl = getValidRedirectUrl(redirectUrl);
+      const verificationUrl = `${baseUrl}/auth/verify-email?token=${verificationToken}`;
 
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendEmailVerification(email, verificationUrl, name);
@@ -149,7 +151,7 @@ export class AuthService {
 
   public async resendVerification(resendVerificationData: ResendVerificationData) {
     try {
-      const { email } = resendVerificationData;
+      const { email, redirectUrl } = resendVerificationData;
 
       const user = await prisma.user.findUnique({
         where: { email },
@@ -168,7 +170,8 @@ export class AuthService {
       // Store in Redis (overwrites if collision, but tokens are random so unlikely)
       await setCache(`verify_email:${verificationToken}`, email, ONE_DAY);
 
-      const verificationUrl = `${config.FRONTEND_ORIGINS[0]}/auth/verify-email?token=${verificationToken}`;
+      const baseUrl = getValidRedirectUrl(redirectUrl);
+      const verificationUrl = `${baseUrl}/auth/verify-email?token=${verificationToken}`;
 
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendEmailVerification(email, verificationUrl, user.name);
