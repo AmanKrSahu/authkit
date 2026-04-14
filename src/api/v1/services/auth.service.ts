@@ -1,3 +1,4 @@
+import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
 import { ErrorCodeEnum } from '@core/common/enums/error-code.enum';
 import type {
   ChangePasswordData,
@@ -25,7 +26,7 @@ import {
   generateSessionToken,
   isTokenExpired,
 } from '@core/common/utils/crypto';
-import { FIVE_MINUTES, ONE_DAY, ONE_HOUR, sevenDaysFromNow } from '@core/common/utils/date-time';
+import { calculateExpirationDate, ONE_DAY } from '@core/common/utils/date-time';
 import type { RefreshTPayload, ResetTPayload } from '@core/common/utils/jwt';
 import {
   mfaTokenSignOptions,
@@ -43,15 +44,14 @@ import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import type { EmailService } from '@core/mailers/resend';
 
+import { RATE_LIMIT } from '../../../core/common/constants/rate-limit.constant';
+
 export class AuthService {
   private emailService: EmailService;
 
   constructor(emailService: EmailService) {
     this.emailService = emailService;
   }
-
-  private readonly MAX_OTP_ATTEMPTS = 3;
-  private readonly MAX_OTP_REQUESTS_PER_HOUR = 5;
 
   public async register(registerData: RegisterData) {
     try {
@@ -241,7 +241,7 @@ export class AuthService {
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);
 
       const sessionToken = generateSessionToken();
-      const expiresAt = sevenDaysFromNow();
+      const expiresAt = calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN);
 
       const session = await prisma.session.create({
         data: {
@@ -340,7 +340,7 @@ export class AuthService {
 
       await prisma.session.update({
         where: { id: session.id },
-        data: { expiresAt: sevenDaysFromNow() },
+        data: { expiresAt: calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN) },
       });
 
       // Invalidate cache to force update of expiry
@@ -370,12 +370,12 @@ export class AuthService {
         throw new NotFoundException('User not found');
       }
 
-      await checkRateLimit(email, ipAddress, this.MAX_OTP_REQUESTS_PER_HOUR);
+      await checkRateLimit(email, ipAddress, RATE_LIMIT.OTP.MAX_REQUESTS);
 
       const otp = generateOTP();
 
-      // Store OTP in Redis with 5 min expiry: key="password_reset:<email>"
-      await setCache(`password_reset:${email}`, otp, FIVE_MINUTES);
+      // Store OTP in Redis with expiry: key="password_reset:<email>"
+      await setCache(`password_reset:${email}`, otp, RATE_LIMIT.OTP.EXPIRY_MS / 1000);
 
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendPasswordResetOTP(email, otp, user.name);
@@ -405,16 +405,16 @@ export class AuthService {
 
       // Check attempts
       const attemptsKey = `password_reset_attempts:${email}`;
-      const previousAttempts = await incrementCache(attemptsKey, ONE_HOUR);
+      const previousAttempts = await incrementCache(attemptsKey, RATE_LIMIT.OTP.WINDOW_MS / 1000);
 
-      if (previousAttempts > this.MAX_OTP_ATTEMPTS) {
+      if (previousAttempts > RATE_LIMIT.OTP.MAX_VERIFICATION_ATTEMPTS) {
         await deleteCache(key); // Invalidate OTP
         await deleteCache(attemptsKey);
         throw new BadRequestException('Too many failed attempts. Please request a new OTP.');
       }
 
       if (storedOtp !== otp) {
-        const remainingAttempts = this.MAX_OTP_ATTEMPTS - previousAttempts;
+        const remainingAttempts = RATE_LIMIT.OTP.MAX_VERIFICATION_ATTEMPTS - previousAttempts;
         throw new BadRequestException(`Invalid OTP. ${remainingAttempts} attempt(s) remaining.`);
       }
 

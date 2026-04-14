@@ -10,4 +10,6 @@ adminRoutes.delete('/users/:userId', adminController.deleteUser);
 adminRoutes.delete('/sessions/user/:userId', adminController.revokeSessionsByUserId);
 adminRoutes.delete('/sessions/:sessionId', adminController.revokeSessionById);
 
+adminRoutes.post('/oidc/clients', adminController.registerOidcClient);
+
 export default adminRoutes;

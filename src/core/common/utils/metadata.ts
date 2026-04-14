@@ -2,7 +2,7 @@ import { BadRequestException } from '@core/common/utils/app-error';
 import prisma from '@core/database/prisma';
 import type { Request } from 'express';
 
-import { ONE_HOUR } from './date-time';
+import { RATE_LIMIT } from '../constants/rate-limit.constant';
 import { getCache, incrementCache } from './redis-helpers';
 
 /* ============================================================================
@@ -78,11 +78,11 @@ export const checkForNewDevice = async (
 export const checkRateLimit = async (
   email: string,
   ipAddress: string,
-  limit: number,
-  type: string = 'PASSWORD_RESET'
+  limit: number = RATE_LIMIT.OTP.MAX_REQUESTS,
+  type: string = 'OTP_RESEND'
 ): Promise<void> => {
   const key = `rate_limit:${type}:${email}:${ipAddress}`;
-  const attempts = await incrementCache(key, ONE_HOUR);
+  const attempts = await incrementCache(key, RATE_LIMIT.OTP.WINDOW_MS / 1000);
 
   if (attempts > limit) {
     throw new BadRequestException('Too many attempts. Please try again later.');
@@ -100,7 +100,7 @@ export const checkRateLimit = async (
 export const checkMfaRateLimit = async (
   email: string,
   ipAddress: string,
-  limit: number
+  limit: number = RATE_LIMIT.MFA.MAX_ATTEMPTS
 ): Promise<number> => {
   const key = `mfa_limit:${email}:${ipAddress}`;
   // We just get the value, increment happens separately if failed
@@ -118,5 +118,5 @@ export const checkMfaRateLimit = async (
  */
 export const incrementMfaRateLimit = async (email: string, ipAddress: string): Promise<void> => {
   const key = `mfa_limit:${email}:${ipAddress}`;
-  await incrementCache(key, ONE_HOUR);
+  await incrementCache(key, RATE_LIMIT.MFA.LOCKOUT_MS / 1000);
 };

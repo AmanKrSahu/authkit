@@ -1,3 +1,4 @@
+import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
 import { config } from '@core/config/app.config';
 import type { SignOptions, VerifyOptions } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
@@ -31,22 +32,22 @@ type SignOptsAndSecret = SignOptions & {
 
 export const accessTokenSignOptions: SignOptsAndSecret = {
   secret: config.JWT.SECRET,
-  expiresIn: config.JWT.EXPIRES_IN as SignOptions['expiresIn'],
+  expiresIn: JWT_CONFIG.EXPIRES_IN as SignOptions['expiresIn'],
 };
 
 export const refreshTokenSignOptions: SignOptsAndSecret = {
   secret: config.JWT.REFRESH_SECRET,
-  expiresIn: config.JWT.REFRESH_EXPIRES_IN as SignOptions['expiresIn'],
+  expiresIn: JWT_CONFIG.REFRESH_EXPIRES_IN as SignOptions['expiresIn'],
 };
 
 export const resetTokenSignOptions: SignOptsAndSecret = {
   secret: config.JWT.RESET_SECRET,
-  expiresIn: config.JWT.RESET_EXPIRES_IN as SignOptions['expiresIn'],
+  expiresIn: JWT_CONFIG.RESET_EXPIRES_IN as SignOptions['expiresIn'],
 };
 
 export const mfaTokenSignOptions: SignOptsAndSecret = {
   secret: config.JWT.MFA_LOGIN_SECRET,
-  expiresIn: config.JWT.MFA_LOGIN_EXPIRES_IN as SignOptions['expiresIn'],
+  expiresIn: JWT_CONFIG.MFA_LOGIN_EXPIRES_IN as SignOptions['expiresIn'],
 };
 
 export const signJwtToken = (

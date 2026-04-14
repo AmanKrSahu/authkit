@@ -100,6 +100,13 @@ const eslintConfig = [
     },
   },
 
+  {
+    files: ['src/swagger/*.ts'],
+    rules: {
+      'unicorn/no-empty-file': 'off',
+    },
+  },
+
   // Ignore patterns
   {
     ignores: ['node_modules/**', 'dist/**', 'build/**', 'coverage/**', '*.min.js', '*.bundle.js'],

@@ -1,3 +1,4 @@
+import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
 import type {
   MagicLinkLoginData,
   MagicLinkVerifyData,
@@ -8,7 +9,7 @@ import {
   generateRandomToken,
   generateSessionToken,
 } from '@core/common/utils/crypto';
-import { FIFTEEN_MINUTES, sevenDaysFromNow } from '@core/common/utils/date-time';
+import { calculateExpirationDate, FIFTEEN_MINUTES } from '@core/common/utils/date-time';
 import { mfaTokenSignOptions, refreshTokenSignOptions, signJwtToken } from '@core/common/utils/jwt';
 import { logger } from '@core/common/utils/logger';
 import { checkForNewDevice } from '@core/common/utils/metadata';
@@ -28,7 +29,7 @@ export class MagicLinkService {
 
   public async login(magicLinkLoginData: MagicLinkLoginData) {
     try {
-      const { email } = magicLinkLoginData;
+      const { email, uid } = magicLinkLoginData;
 
       const user = await prisma.user.findUnique({
         where: { email },
@@ -40,7 +41,9 @@ export class MagicLinkService {
 
       const token = generateRandomToken();
 
-      await setCache(`magic_link:${token}`, email, FIFTEEN_MINUTES);
+      // Store { email, uid } in Redis
+      const data = JSON.stringify({ email, uid });
+      await setCache(`magic_link:${token}`, data, FIFTEEN_MINUTES);
 
       const magicLinkUrl = `${config.FRONTEND_ORIGINS[0]}/auth/magic-link/verify?token=${token}`;
 
@@ -64,10 +67,21 @@ export class MagicLinkService {
     try {
       const { token, ipAddress, userAgent } = magicLinkVerifyData;
 
-      const email = await getCache(`magic_link:${token}`);
+      const cachedData = await getCache(`magic_link:${token}`);
 
-      if (!email) {
+      if (!cachedData) {
         throw new BadRequestException('Invalid or expired magic link token');
+      }
+
+      let email: string;
+      let uid: string | undefined;
+
+      try {
+        const parsed = JSON.parse(cachedData);
+        email = parsed.email;
+        uid = parsed.uid;
+      } catch {
+        email = cachedData;
       }
 
       const user = await prisma.user.findUnique({
@@ -100,7 +114,7 @@ export class MagicLinkService {
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);
 
       const sessionToken = generateSessionToken();
-      const expiresAt = sevenDaysFromNow();
+      const expiresAt = calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN);
 
       const session = await prisma.session.create({
         data: {
@@ -138,6 +152,7 @@ export class MagicLinkService {
         mfaRequired: false,
         accessToken,
         refreshToken,
+        uid,
       };
     } catch (error) {
       if (error instanceof AppError) {

@@ -177,14 +177,15 @@ All endpoints listed below are relative to this base path.
 
 ```json
 {
-  "email": "john@example.com"
+  "email": "john@example.com",
+  "uid": "optional_oidc_interaction_uid"
 }
 ```
 
 ### 4.2. Verify Magic Link
 
 - **Route**: `POST /magic-link/verify`
-- **Description**: Verifies the magic link token and authenticates the user.
+- **Description**: Verifies the magic link token and authenticates the user. If `uid` was provided during login, it resumes the OIDC flow.
 - **Security**: Public
 
 **Request Body**
@@ -336,3 +337,98 @@ All endpoints listed below are relative to this base path.
   "userId": "uuid-string"
 }
 ```
+
+### 7.5. Register OIDC Client
+
+- **Route**: `POST /admin/oidc/clients`
+- **Description**: Registers a new OIDC client and returns the generated Client ID and Client Secret. Ensure you save the secret as it will not be shown again.
+- **Security**: Bearer Token (Admin role)
+
+**Request Body**
+
+```json
+{
+  "clientName": "Client Name",
+  "redirectUrls": ["https://example.com/callback"],
+  "grantTypes": ["authorization_code", "refresh_token"],
+  "scope": "openid profile email"
+}
+```
+
+---
+
+## 8. OpenID Connect (OIDC) (`/oidc`)
+
+The OIDC endpoints enable this application to act as an Identity Provider (IdP) for other applications.
+
+### 8.1. Discovery Configuration
+
+- **Route**: `GET /oidc/.well-known/openid-configuration`
+- **Description**: Returns the OIDC Provider configuration and supported metadata.
+- **Security**: Public
+
+### 8.2. JWKS (Json Web Key Set)
+
+- **Route**: `GET /oidc/jwks`
+- **Description**: Returns the public keys used to verify tokens signed by this provider.
+- **Security**: Public
+
+### 8.3. Authorization
+
+- **Route**: `GET /oidc/auth`
+- **Description**: Starts the OIDC Authorization Code flow. Redirects to interaction endpoints if login/consent is needed.
+- **Security**: Public (Requires Client ID, Redirect URI, etc.)
+
+### 8.4. Token
+
+- **Route**: `POST /oidc/token`
+- **Description**: Exchanges an Authorization Code for Access, Refresh, and ID Tokens.
+- **Security**: Basic Auth (Client ID & Secret) OR POST Body Credentials.
+
+### 8.5. UserInfo
+
+- **Route**: `GET /oidc/me`
+- **Description**: Returns claims about the authenticated user.
+- **Security**: Bearer Token (Access Token from OIDC flow)
+
+### 8.6. Introspection
+
+- **Route**: `POST /oidc/token/introspection`
+- **Description**: Validates a token and returns its active state and meta-information.
+- **Security**: Basic Auth (Client ID & Secret)
+
+### 8.7. Revocation
+
+- **Route**: `POST /oidc/token/revocation`
+- **Description**: Revokes a given token.
+- **Security**: Basic Auth (Client ID & Secret)
+
+### 8.8. Get Interaction Details
+
+- **Route**: `GET /oidc/interaction/:uid`
+- **Description**: Get interaction details. **Note:** Checks for an existing Direct API session (`refreshToken` cookie) and automatically logs the user in if valid (Session Bridge).
+- **Security**: Public
+
+### 8.9. Submit Login Interaction
+
+- **Route**: `POST /oidc/interaction/:uid/login`
+- **Description**: Submit login credentials. Returns `{ mfaRequired: true, uid: "..." }` if MFA is enabled.
+- **Security**: Public
+
+### 8.10. Submit MFA Interaction
+
+- **Route**: `POST /oidc/interaction/:uid/mfa`
+- **Description**: Submit MFA code to finalize login (New).
+- **Security**: Public
+
+### 8.11. Confirm Consent
+
+- **Route**: `POST /oidc/interaction/:uid/confirm`
+- **Description**: Confirm consent.
+- **Security**: Public
+
+### 8.12. Abort Interaction
+
+- **Route**: `GET /oidc/interaction/:uid/abort`
+- **Description**: Abort interaction.
+- **Security**: Public

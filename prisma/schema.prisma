@@ -80,3 +80,17 @@ model Session {
 
   @@map("session")
 }
+
+model OidcClient {
+  id           String   @id @default(cuid())
+  clientName   String
+  clientId     String   @unique
+  clientSecret String
+  redirectUrls String[]
+  grantTypes   String[]
+  scope        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("oidc_client")
+}

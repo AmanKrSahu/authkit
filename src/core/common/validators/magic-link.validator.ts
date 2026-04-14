@@ -9,6 +9,7 @@ const tokenSchema = z.string().min(1, 'Magic link token is required');
 
 export const loginMagicLinkSchema = z.object({
   email: emailSchema,
+  uid: z.string().optional(),
 });
 
 export const verifyMagicLinkSchema = z.object({

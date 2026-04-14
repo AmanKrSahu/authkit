@@ -1,3 +1,4 @@
+import { OidcService } from '@api/v1/services/oidc.service';
 import { GoogleProfile } from '@core/common/interface/oauth.interface';
 import { setAuthenticationCookies, setCsrfCookie } from '@core/common/utils/cookie';
 import { getClientIP, getUserAgent } from '@core/common/utils/metadata';
@@ -9,41 +10,39 @@ import { OAuthService } from '../services/oauth.service';
 
 export class OAuthController {
   private oauthService: OAuthService;
+  private oidcService: OidcService;
 
-  constructor(oauthService: OAuthService) {
+  constructor(oauthService: OAuthService, oidcService: OidcService) {
     this.oauthService = oauthService;
+    this.oidcService = oidcService;
   }
 
-  /**
-   * @openapi
-   * /oauth/google/callback:
-   *   get:
-   *     tags:
-   *       - OAuth
-   *     summary: Google OAuth callback
-   *     description: Handles the callback from Google OAuth authentication.
-   *     security: []
-   *     responses:
-   *       200:
-   *         description: OAuth login successful, redirects to frontend
-   *       401:
-   *         description: Authentication failed
-   *       500:
-   *         description: Internal server error
-   */
   @AsyncHandler
   public googleCallback = async (req: Request, res: Response) => {
     const userAgent = getUserAgent(req);
     const ipAddress = getClientIP(req);
     const profile = req.user as GoogleProfile;
 
-    const { refreshToken } = await this.oauthService.loginWithGoogle({
+    const { refreshToken, user } = await this.oauthService.loginWithGoogle({
       profile,
       userAgent,
       ipAddress,
     });
 
-    // Generate random CSRF token
+    // Check if we are in an OIDC interaction
+    const state = req.query.state as string;
+    if (state) {
+      try {
+        const { uid } = JSON.parse(state);
+        if (uid) {
+          await this.oidcService.submitLogin(req, res, user.id);
+          return;
+        }
+      } catch {
+        // Ignore JSON parse errors, treat as normal flow
+      }
+    }
+
     const csrfToken = crypto.randomUUID();
 
     setAuthenticationCookies({
@@ -52,6 +51,7 @@ export class OAuthController {
     });
     setCsrfCookie({ res, csrfToken });
 
+    // It assumes that the dashboard is at the second origin
     return res.redirect(`${config.FRONTEND_ORIGINS[1]}?status=success`);
   };
 }

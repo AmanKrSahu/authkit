@@ -21,7 +21,17 @@ const BASE_PATH = config.BASE_PATH;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'script-src': ["'self'", "'unsafe-inline'"], // Required for OIDC form_post and interactions
+        'style-src': ["'self'", "'unsafe-inline'"], // Required for simple interaction styling
+      },
+    },
+  })
+);
 app.use(compression());
 app.use(globalRateLimiter);
 

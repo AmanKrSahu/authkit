@@ -1,3 +1,4 @@
+import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
 import { config } from '@core/config/app.config';
 import type { CookieOptions, Response } from 'express';
 
@@ -31,7 +32,7 @@ const defaults: CookieOptions = {
 };
 
 export const getCsrfTokenCookieOptions = (): CookieOptions => {
-  const expiresIn = config.JWT.REFRESH_EXPIRES_IN; // Match refresh token life or shorter
+  const expiresIn = JWT_CONFIG.REFRESH_EXPIRES_IN; // Match refresh token life or shorter
   const expires = calculateExpirationDate(expiresIn);
 
   return {
@@ -43,7 +44,7 @@ export const getCsrfTokenCookieOptions = (): CookieOptions => {
 };
 
 export const getRefreshTokenCookieOptions = (): CookieOptions => {
-  const expiresIn = config.JWT.REFRESH_EXPIRES_IN;
+  const expiresIn = JWT_CONFIG.REFRESH_EXPIRES_IN;
   const expires = calculateExpirationDate(expiresIn);
 
   return {
@@ -54,7 +55,7 @@ export const getRefreshTokenCookieOptions = (): CookieOptions => {
 };
 
 export const getResetTokenCookieOptions = (): CookieOptions => {
-  const expiresIn = config.JWT.RESET_EXPIRES_IN;
+  const expiresIn = JWT_CONFIG.RESET_EXPIRES_IN;
   const expires = calculateExpirationDate(expiresIn);
 
   return {
@@ -65,7 +66,7 @@ export const getResetTokenCookieOptions = (): CookieOptions => {
 };
 
 export const getMfaCookieOptions = (): CookieOptions => {
-  const expiresIn = config.JWT.MFA_LOGIN_EXPIRES_IN;
+  const expiresIn = JWT_CONFIG.MFA_LOGIN_EXPIRES_IN;
   const expires = calculateExpirationDate(expiresIn);
 
   return {
