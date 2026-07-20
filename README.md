@@ -17,6 +17,7 @@ AuthKit is a production-grade **Identity Provider (IdP)** and **Identity & Acces
 - [4. Core Architecture & Security Infrastructure](#4-core-architecture--security-infrastructure)
 - [5. OIDC Identity Provider (IdP) Implementation](#5-oidc-identity-provider-idp-implementation)
 - [6. API Inventory & Endpoint Specifications](#6-api-inventory--endpoint-specifications)
+- [7. Comprehensive Security, Performance & Feature Audit (July 2026)](#7-comprehensive-security-performance--feature-audit-july-2026)
 
 ---
 
@@ -153,6 +154,62 @@ AuthKit functions as a centralized IdP, supporting dynamic client registration a
 Comprehensive specifications including request/response schemas are accessible via the Swagger portal.
 
 👉 Full Documentation: [**API Endpoints Documentation**](./docs/api_endpoints.md)
+
+---
+
+## 7. Comprehensive Security, Performance & Feature Audit (July 2026)
+
+To elevate **AuthKit** from a robust side-project showcase to a **production-ready, enterprise-grade Identity Provider (IdP)** meeting global standards, a thorough engineering audit was performed. This audit systematically analyzed the codebase for cryptographic rigor, protocol compliance, bottleneck optimization, and enterprise scalability.
+
+All findings, remediations, and strategic feature additions have been structured into a master roadmap designed to prevent regressions and secure the platform's core trust base.
+
+### 7.1 Audit Artifacts & Findings
+
+The audit is broken down into specialized focus areas. You can review the exhaustive reports here:
+
+- [**Master Task Plan & Execution Roadmap (`task.md`)**](./docs/audit/2026-07-20/task.md) — The central steering document outlining sequencing, complexity, and priority.
+- [**Security Audit Report (`security-audit.md`)**](./docs/audit/2026-07-20/security-audit.md) — Exhaustive analysis of threat vectors, session caching vulnerabilities, and sanitization leaks.
+- [**Performance & Scalability Audit (`performance.md`)**](./docs/audit/2026-07-20/performance.md) — Profiling query paths, database connection pooling, and latency-heavy transactions.
+- [**Enterprise Feature Recommendations (`feature-recommendations.md`)**](./docs/audit/2026-07-20/feature-recommendations.md) — Functional specifications for B2B multi-tenancy, passkeys, webhooks, and audit trails.
+
+---
+
+### 7.2 Why This Audit?
+
+Modern IAM (Identity & Access Management) systems require zero-compromise security posture. The audit was conducted to:
+
+1.  **Harden Cryptographic Primitives**: Eliminate weak entropy, secure TOTP/MFA secrets, and enforce strict, cryptographically bound token states.
+2.  **Ensure Zero-Trust Defaults**: Upgrade session invalidation, CORS handling, and OAuth state verification.
+3.  **Optimize High-Concurrency Paths**: Remove expensive bottlenecks (e.g., Bcrypt execution blocking DB transactions) and introduce proper indices.
+4.  **Establish B2B/Enterprise Readiness**: Define clear milestones for Multi-Tenancy (Organizations), SAML/OIDC SSO, and Webhook dispatchers.
+
+---
+
+### 7.3 Master Execution Roadmap
+
+The master tasks are sequenced into three distinct phases to manage risks and safeguard production stability:
+
+#### **Phase 1: Critical Fixes (Security-First & Immediate Deployment)**
+
+- **Token Binding**: Explicitly bind password-reset tokens to the payload email (resolving SEC-C1).
+- **SSO Hardening**: Address OIDC MFA bypasses during social SSO redirection.
+- **Secret Rotation & Vaulting**: Coordination of automated secret rotation policies (JWT keys, RSA keypairs) and moving credentials to a secrets manager.
+- **Strict CORS Policy**: Transition from loose substring matching to strict exact-origin allowlists.
+- **Session Revocation**: Real-time validation checks for JWT session cache revocation in Redis.
+
+#### **Phase 2: Stability & Performance**
+
+- **Testing Harness**: Setup automated integration testing with Vitest, Supertest, and Testcontainers.
+- **High-ROI DB Optimizations**: Add composite indexes on session tables and decouple slow hashing operations from atomic database transactions.
+- **Observability**: Integrate Prometheus metrics (`/metrics`), tracing headers, and standard audit logs.
+
+#### **Phase 3: Modernization & Enterprise Features**
+
+- **Passwordless (Passkeys)**: Deploy WebAuthn-based biometrics.
+- **Multi-Tenancy**: Introduce logical Organization partitioning.
+- **Enterprise Integration**: Enable SAML 2.0 / OIDC RP federation and transactional Webhooks.
+
+For details on individual ticket tracking, metrics, and exit criteria, refer directly to the [**Master Execution Roadmap (`task.md`)**](./docs/audit/2026-07-20/task.md).
 
 ---
 
