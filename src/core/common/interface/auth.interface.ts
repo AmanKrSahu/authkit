@@ -41,7 +41,7 @@ export interface VerifyOtpData {
 }
 
 export interface ResetPasswordData {
-  email: string;
+  email?: string;
   password: string;
   confirmPassword: string;
   resetToken: string;

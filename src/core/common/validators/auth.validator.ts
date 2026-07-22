@@ -64,7 +64,7 @@ export const verifyOtpSchema = z.object({
 
 export const resetPasswordSchema = z
   .object({
-    email: emailSchema,
+    email: emailSchema.optional(),
     password: passwordSchema,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
   })

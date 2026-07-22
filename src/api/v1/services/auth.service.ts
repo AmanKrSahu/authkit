@@ -438,21 +438,23 @@ export class AuthService {
 
   public async resetPassword(resetPasswordData: ResetPasswordData) {
     try {
-      const { email, password, resetToken } = resetPasswordData;
+      const { password, resetToken } = resetPasswordData;
+
+      const { payload } = verifyJwtToken<ResetTPayload>(resetToken, {
+        secret: resetTokenSignOptions.secret,
+      });
+
+      if (payload?.purpose !== 'PASSWORD_RESET') {
+        throw new UnauthorizedException('Invalid reset token');
+      }
+
+      const email = payload.email;
 
       const user = await prisma.user.findUnique({
         where: { email },
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
-      const { payload } = verifyJwtToken<ResetTPayload>(resetToken, {
-        secret: resetTokenSignOptions.secret,
-      });
-
-      if (!payload) {
         throw new UnauthorizedException('Invalid reset token');
       }
 
