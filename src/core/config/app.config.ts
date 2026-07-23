@@ -29,10 +29,15 @@ const appConfig = () => ({
   RESEND_API_KEY: getEnvironment('RESEND_API_KEY', ''),
   RESEND_SENDER_EMAIL: getEnvironment('RESEND_EMAIL', 'noreply@yourdomain.com'),
 
-  AUTHENTICATOR_APP_SECRET: getEnvironment(
-    'AUTHENTICATOR_APP_SECRET',
-    'authenticator-app-secret-dev'
-  ),
+  AUTHENTICATOR_APP_SECRET: (() => {
+    const val = getEnvironment('AUTHENTICATOR_APP_SECRET');
+    if (Buffer.byteLength(val, 'utf8') < 32) {
+      throw new Error(
+        'AUTHENTICATOR_APP_SECRET is too short. It must be at least 32 bytes of secure entropy.'
+      );
+    }
+    return val;
+  })(),
 
   OIDC: {
     COOKIE_KEYS: getEnvironment('OIDC_COOKIE_KEYS').split(','),
