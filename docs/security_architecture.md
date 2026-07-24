@@ -29,7 +29,8 @@ Since we use cookies for Refresh Tokens and Authentication actions (like Passwor
 - **Mechanism:**
   1.  **Cookie:** The server sets a `csrfToken` cookie (readable by client JS).
   2.  **Header:** For every state-changing request (POST, PUT, DELETE), the client must read this cookie and send its value in the `x-csrf-token` header.
-  3.  **Validation:** The `requireAuthAction` middleware checks if `cookie.csrfToken === header['x-csrf-token']`.
+  3.  **Origin Validation (Production)**: In production environments, the `requireAuthAction` middleware validates the request's `Origin` header against the unified origin policy.
+  4.  **Token Comparison**: The middleware verifies that `cookie.csrfToken === header['x-csrf-token']`.
 - **Workflow:**
   - **Login/MFA:** Upon successful authentication, the server generates a random UUID and sets the `csrfToken` cookie.
   - **Protected Actions:** Endpoints like `/logout`, `/refresh-token`, and `/reset-password` enforce the check.
@@ -108,8 +109,9 @@ To provide a seamless Single Sign-On (SSO) experience, we implement a **Session 
 
 To ensure robust cryptographic security, AuthKit includes an automated script (`pnpm generate:secrets`) that securely generates:
 
-1. **JWT & Session Secrets**: Cryptographically secure 256-bit random strings using `node:crypto`.
-2. **OIDC JWKS**: A securely generated RS256 keypair (using `jose`) for signing OIDC tokens.
+1. **JWT & Session Secrets**: Cryptographically secure 256-bit random strings using `node:crypto` (covering auth, refresh, reset, and MFA tokens).
+2. **TOTP Encryption Key (`AUTHENTICATOR_APP_SECRET`)**: A cryptographically secure 256-bit key used to encrypt users' Google Authenticator seeds at rest. The application validates and rejects secrets under 32 bytes of secure entropy at boot.
+3. **OIDC JWKS**: A securely generated RS256 keypair (using `jose`) for signing OIDC tokens.
    By keeping secret generation automated, we reduce the risk of weak, manually chosen passwords or keys being used in production.
 
 ---

@@ -127,11 +127,12 @@ All endpoints listed below are relative to this base path.
 
 ```json
 {
-  "email": "john@example.com",
   "password": "newStrongPassword123",
   "confirmPassword": "newStrongPassword123"
 }
 ```
+
+_Note: The email address is no longer supplied in the request body; the identity is securely derived directly from the verified reset token payload to prevent account takeover._
 
 ### 2.9. Change Password
 

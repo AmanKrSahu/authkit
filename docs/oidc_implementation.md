@@ -121,8 +121,35 @@ Indicates the user needs to establish an authenticated session.
 }
 ```
 
-**Result:** `303 See Other`
+**Result (MFA Disabled):** `303 See Other`
 Returns a successfully authenticated session (`_session` cookie) and redirects to the resume checkpoint `/oidc/auth/<uid>`.
+
+**Result (MFA Enabled):** `200 OK`
+Returns a JSON payload indicating MFA verification is required and sets the `mfaLoginToken` cookie:
+
+```json
+{
+  "success": true,
+  "mfaRequired": true,
+  "message": "MFA verification required",
+  "uid": "<uid>"
+}
+```
+
+#### Step 3.3b: Submit MFA Verification (if MFA is enabled)
+
+**Endpoint:** `POST /oidc/interaction/<uid>/mfa`
+**Headers:** Forward `_interaction` and `mfaLoginToken` cookies. `Content-Type: application/json`.
+**Body (JSON):**
+
+```json
+{
+  "code": "123456"
+}
+```
+
+**Result:** `303 See Other`
+Verifies the TOTP code and logs the user in, redirecting to the resume checkpoint `/oidc/auth/<uid>`.
 
 #### Step 3.4: Resume Auth (Consent Check)
 
@@ -226,6 +253,7 @@ Now the third-party backend trades the short-lived authorization code for actual
 | **Auth**        | `/oidc/auth`                             | GET    | Start the Login flow                     |
 | **Interaction** | `/oidc/interaction/:uid`                 | GET    | Get info about the current login/consent |
 | **Interaction** | `/oidc/interaction/:uid/login`           | POST   | Submit credentials                       |
+| **Interaction** | `/oidc/interaction/:uid/mfa`             | POST   | Submit MFA code to finalize login        |
 | **Interaction** | `/oidc/interaction/:uid/confirm`         | POST   | Finalize consent and get the Code        |
 | **Token**       | `/oidc/token`                            | POST   | Trade Code for Tokens                    |
 | **Profile**     | `/oidc/me`                               | GET    | Get authenticated user profile           |

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import { logger } from '@core/common/utils/logger';
+import { isAllowedOrigin } from '@core/common/utils/url.util';
 import { config } from '@core/config/app.config';
 import { swaggerSpec } from '@core/config/swagger.config';
 import redis from '@core/database/redis';
@@ -41,12 +42,8 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
-      // Check if the origin is in the allowed list
-      if (
-        config.FRONTEND_ORIGINS.includes(origin) ||
-        origin.includes(config.DOMAIN_URL) ||
-        origin.includes(`http://localhost:${config.PORT}`)
-      ) {
+      // Check if the origin is allowed by the security policy
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
 
