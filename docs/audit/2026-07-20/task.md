@@ -20,7 +20,7 @@ Goal: close directly-exploitable auth bypasses, rotate compromised secrets, and 
 | 1.3  | **Rotate ALL secrets** (JWT×4, OIDC RSA keypair, cookie keys, authenticator key, Google secret, Resend key, DB password); move to a secrets manager; URL-encode the DB password | SEC-C3, SEC-L11 | P0       | M          | secrets manager | Restores trust base integrity                        | **Done** |
 | 1.4  | **Remove the `AUTHENTICATOR_APP_SECRET` default**; require + validate ≥32B entropy at boot                                                                                      | SEC-C4          | P0       | S          | 1.3             | Prevents predictable TOTP-encryption key             | **Done** |
 | 1.5  | **CORS exact-origin allowlist** — remove `origin.includes(...)` substring checks                                                                                                | SEC-H1          | P0       | S          | none            | Closes credentialed cross-origin bypass              | **Done** |
-| 1.6  | **Sanitize + re-validate the JWT session cache** — cache minimal fields; re-check `isRevoked`/`expiresAt` on every request                                                      | SEC-H2          | P0       | M          | none            | Closes revocation bypass; removes secrets from Redis | Todo     |
+| 1.6  | **Sanitize + re-validate the JWT session cache** — cache minimal fields; re-check `isRevoked`/`expiresAt` on every request                                                      | SEC-H2          | P0       | M          | none            | Closes revocation bypass; removes secrets from Redis | **Done** |
 | 1.7  | **Configure `trust proxy` + `req.ip`; add per-account login lockout** (supplementary proxy/Nginx findings in [`supplementary-findings.md`](./supplementary-findings.md))        | SEC-H3          | P0       | M          | none            | Restores brute-force protection                      | Todo     |
 | 1.8  | **Add rate limiters to magic-link & MFA-verify routes** (+ per-`userId` MFA counter)                                                                                            | SEC-H4          | P1       | S          | 1.7             | Stops OTP/backup brute force & email bombing         | Todo     |
 | 1.9  | **Secure Redis** — `requirepass` + client password, TLS in prod, stop publishing dev port; encrypt/shorten `mfa_setup` TTL                                                      | SEC-H5          | P1       | M          | none            | Protects tokens/TOTP secrets at rest                 | Todo     |
@@ -54,17 +54,17 @@ Goal: harden the medium-risk surface, add the safety net (tests, monitoring), an
 
 ### 2B — Performance (high-ROI first)
 
-| #    | Task                                                                                           | Source           | Priority | Complexity | Expected Impact                                        | Status |
-| ---- | ---------------------------------------------------------------------------------------------- | ---------------- | -------- | ---------- | ------------------------------------------------------ | ------ |
-| 2.13 | **Add `Session` indexes** (`userId`, `userId+deviceFingerprint`, `userId+isRevoked+expiresAt`) | perf QW-1/QW-2   | P1       | S          | 10–100× faster session lookups; removes login seq-scan | Todo   |
-| 2.14 | **JWT strategy: fetch single session by PK** (combine with 1.6)                                | perf QW-3        | P1       | M          | Constant-size hottest-path query & cache               | Todo   |
-| 2.15 | Move bcrypt out of the register transaction                                                    | perf QW-5        | P2       | S          | ~100ms less connection hold per register               | Todo   |
-| 2.16 | Batch Redis session deletions (`deleteCacheMany`)                                              | perf QW-6        | P2       | S          | M round-trips → 1 on revoke-all                        | Todo   |
-| 2.17 | Parallelize/queue registration emails                                                          | perf QW-4        | P2       | S          | ~1 email RTT off register latency                      | Todo   |
-| 2.18 | Paginate `getAllUsers`/`getSessions` (+ populate count headers)                                | perf M-1         | P2       | M          | Bounded admin payloads at scale                        | Todo   |
-| 2.19 | Tune Redis client resilience + Prisma pool sizing/timeouts                                     | perf QW-7/LT-3   | P2       | S          | Predictable behavior under load                        | Todo   |
-| 2.20 | Fix/simplify `getSessionById` cache path; drop redundant pre-fetches                           | perf M-2/M-3     | P3       | S          | Fewer wasted round-trips                               | Todo   |
-| 2.21 | Cache `getAppVersion`; build/Docker/logger tuning                                              | perf QW-8/LT-4–6 | P3       | M          | Smaller image, lower logging overhead                  | Todo   |
+| #    | Task                                                                                           | Source           | Priority | Complexity | Expected Impact                                        | Status   |
+| ---- | ---------------------------------------------------------------------------------------------- | ---------------- | -------- | ---------- | ------------------------------------------------------ | -------- |
+| 2.13 | **Add `Session` indexes** (`userId`, `userId+deviceFingerprint`, `userId+isRevoked+expiresAt`) | perf QW-1/QW-2   | P1       | S          | 10–100× faster session lookups; removes login seq-scan | Todo     |
+| 2.14 | **JWT strategy: fetch single session by PK** (combine with 1.6)                                | perf QW-3        | P1       | M          | Constant-size hottest-path query & cache               | **Done** |
+| 2.15 | Move bcrypt out of the register transaction                                                    | perf QW-5        | P2       | S          | ~100ms less connection hold per register               | Todo     |
+| 2.16 | Batch Redis session deletions (`deleteCacheMany`)                                              | perf QW-6        | P2       | S          | M round-trips → 1 on revoke-all                        | Todo     |
+| 2.17 | Parallelize/queue registration emails                                                          | perf QW-4        | P2       | S          | ~1 email RTT off register latency                      | Todo     |
+| 2.18 | Paginate `getAllUsers`/`getSessions` (+ populate count headers)                                | perf M-1         | P2       | M          | Bounded admin payloads at scale                        | Todo     |
+| 2.19 | Tune Redis client resilience + Prisma pool sizing/timeouts                                     | perf QW-7/LT-3   | P2       | S          | Predictable behavior under load                        | Todo     |
+| 2.20 | Fix/simplify `getSessionById` cache path; drop redundant pre-fetches                           | perf M-2/M-3     | P3       | S          | Fewer wasted round-trips                               | Todo     |
+| 2.21 | Cache `getAppVersion`; build/Docker/logger tuning                                              | perf QW-8/LT-4–6 | P3       | M          | Smaller image, lower logging overhead                  | Todo     |
 
 ### 2C — Safety net & operability
 

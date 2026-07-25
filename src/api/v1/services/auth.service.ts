@@ -541,6 +541,12 @@ export class AuthService {
         throw new BadRequestException('New password cannot be the same as the old one');
       }
 
+      // Fetch active sessions to invalidate cache
+      const activeSessions = await prisma.session.findMany({
+        where: { userId: userId, isRevoked: false },
+        select: { id: true },
+      });
+
       const hashedPassword = await hashPassword(newPassword);
 
       await prisma.$transaction(async tx => {
@@ -562,6 +568,11 @@ export class AuthService {
           },
         });
       });
+
+      // Invalidate Redis keys
+      for (const session of activeSessions) {
+        await deleteCache(`session:${session.id}`);
+      }
 
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendPasswordChangeConfirmation(user.email, user.name);
