@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-24  
 **Status:** Approved & Implemented  
-**Context:** Resolves [SEC-H1](../audit/2026-07-20/security-audit.md#L243) (loose CORS origin substring matching) and unifies checking logic.
+**Context:** Resolves [SEC-H1](../../audit/2026-07-20/security-audit.md#L243) (loose CORS origin substring matching) and unifies checking logic.
 
 ---
 
@@ -59,7 +59,7 @@ To support dynamic subdomains (e.g., `https://*.yourdomain.com` for multi-tenant
 
 ## 3. The Solution: Unified Origin Validator
 
-We introduced a single helper function, `isAllowedOrigin(origin?: string): boolean`, implemented in [url.util.ts](../../src/core/common/utils/url.util.ts), and integrated it across CORS, CSRF, and Redirect validators.
+We introduced a single helper function, `isAllowedOrigin(origin?: string): boolean`, implemented in [url.util.ts](../../../src/core/common/utils/url.util.ts), and integrated it across CORS, CSRF, and Redirect validators.
 
 ### Origin Check Logic
 
@@ -80,7 +80,7 @@ flowchart TD
 
 #### 1. Core Checker Utility
 
-Located in [url.util.ts](../../src/core/common/utils/url.util.ts):
+Located in [url.util.ts](../../../src/core/common/utils/url.util.ts):
 
 ```ts
 export const isAllowedOrigin = (origin?: string): boolean => {
@@ -135,7 +135,7 @@ export const isAllowedOrigin = (origin?: string): boolean => {
 
 #### 2. CORS Integration
 
-Located in [index.ts](../../src/api/index.ts):
+Located in [index.ts](../../../src/api/index.ts):
 
 ```ts
 app.use(
@@ -157,7 +157,7 @@ app.use(
 
 #### 3. CSRF Middleware Integration
 
-Located in [csrf.middleware.ts](../../src/api/v1/middlewares/csrf.middleware.ts):
+Located in [csrf.middleware.ts](../../../src/api/v1/middlewares/csrf.middleware.ts):
 
 ```ts
 if (config.NODE_ENV === 'production' && (!origin || !isAllowedOrigin(origin))) {
@@ -167,7 +167,7 @@ if (config.NODE_ENV === 'production' && (!origin || !isAllowedOrigin(origin))) {
 
 #### 4. Redirect Validation Integration
 
-Located in [url.util.ts](../../src/core/common/utils/url.util.ts):
+Located in [url.util.ts](../../../src/core/common/utils/url.util.ts):
 
 ```ts
 export const getValidRedirectUrl = (requestedUrl?: string): string => {

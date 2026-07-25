@@ -20,6 +20,15 @@ import routes from './v1/routes';
 const app = express();
 const BASE_PATH = config.BASE_PATH;
 
+if (config.TRUST_PROXY === 'true') {
+  app.set('trust proxy', true);
+} else if (config.TRUST_PROXY === 'false') {
+  app.set('trust proxy', false);
+} else if (config.TRUST_PROXY) {
+  const hops = Number(config.TRUST_PROXY);
+  app.set('trust proxy', Number.isNaN(hops) ? config.TRUST_PROXY : hops);
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(

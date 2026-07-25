@@ -138,6 +138,8 @@
  *     responses:
  *       200:
  *         description: Login successful
+ *       400:
+ *         description: Too many failed attempts - Account temporarily locked for 15 minutes
  *       401:
  *         description: Invalid credentials
  *       403:
@@ -271,7 +273,6 @@
  *           schema:
  *             type: object
  *             required:
- *               - email
  *               - password
  *               - confirmPassword
  *             properties:

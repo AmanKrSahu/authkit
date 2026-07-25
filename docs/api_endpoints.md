@@ -46,7 +46,7 @@ All endpoints listed below are relative to this base path.
 ### 2.2. Login
 
 - **Route**: `POST /auth/login`
-- **Description**: Authenticates a user and returns access and refresh tokens.
+- **Description**: Authenticates a user and returns access and refresh tokens. If the account experiences 5 consecutive failed logins, it is temporarily locked out for 15 minutes.
 - **Security**: Public
 
 **Request Body**
@@ -57,6 +57,8 @@ All endpoints listed below are relative to this base path.
   "password": "strongPassword123"
 }
 ```
+
+_Note: On lockout, the endpoint returns a `400 Bad Request` status code with a message stating that the account is temporarily locked._
 
 ### 2.3. Logout
 

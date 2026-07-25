@@ -60,12 +60,15 @@ While JWTs are stateless, we track **Sessions** in the database to allow for imm
   - **Password Change:** Revokes **all** active sessions for the user.
   - **Suspicious Activity:** Administrators can revoke specific sessions.
 - **Device Fingerprinting:** We capture User-Agent and IP address to generate a device fingerprint. This helps in detecting "New Devices" and notifying the user via email.
+- **Per-Account Lockout**: To prevent credential stuffing and brute-force campaigns, we enforce a per-account lockout policy. If an email address experiences 5 failed login attempts within 15 minutes, it is temporarily locked for 15 minutes. This status is checked immediately at the start of the login request (before looking up the user or running bcrypt) to protect backend database and CPU resources from denial-of-service, and to mitigate username enumeration.
 
 ### 2.2. Rate Limiting
 
 We use **Redis** to implement sliding-window rate limiting.
 
-- **Global Limiter:** Protects the entire API from DDoS attacks (e.g., 100 requests/15min).
+- **Upstream Gateway Protection**: In production, public traffic routes through an Nginx container. Nginx terminates SSL/TLS and overwrites proxy headers (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`), stripping out client-side header spoofing.
+- **Proxy Trust Configuration**: Express is configured dynamically via the `TRUST_PROXY` environment variable. When set to trust the proxy, Express securely resolves client IPs using native `req.ip`.
+- **Global Limiter:** Protects the entire API from DDoS attacks (e.g., 200 requests/15min).
 - **Auth Limiter:** Stricter limits on `/auth/*` endpoints (e.g., Login, Register) to prevent Brute Force and Credential Stuffing attacks.
 - **MFA/OTP Limiter:** Very strict limits (e.g., 3-5 attempts) on OTP verification to prevent guessing.
 
@@ -124,4 +127,5 @@ Redis acts as a high-performance "Speed Layer" that facilitates security feature
 | :------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
 | **Session Caching**  | Stores sanitized session and user profiles (excluding credential hashes/TOTP secrets). The JWT Strategy validates session expiry and revocation status on cache hits. | Drastic reduction in DB load; sub-millisecond authentication checks with real-time revocation checks. |
 | **Rate Limiting**    | Stores counters and expiry times for IP addresses.                                                                                                                    | Atomic increments prevent race conditions; extremely fast.                                            |
+| **Login Lockout**    | Tracks per-account failure counters (`failed_attempts:<email>`) and lockout flags (`lockout:<email>`) with a 15-minute sliding TTL.                                   | Neutralizes password brute-forcing across rotating IPs.                                               |
 | **Ephemeral Tokens** | Stores short-lived tokens: <br> - MFA Setup Secrets <br> - Email Verification Tokens <br> - Password Reset OTPs                                                       | Automatic expiration (TTL) handles cleanup; data is never persisted to disk (DB) until verified.      |

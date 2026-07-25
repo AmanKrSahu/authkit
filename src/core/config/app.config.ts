@@ -5,6 +5,7 @@ const appConfig = () => ({
   NODE_ENV: getEnvironment('NODE_ENV', 'development'),
   BASE_PATH: getEnvironment('BASE_PATH', '/api/v1'),
   DOMAIN_URL: getEnvironment('DOMAIN_URL', 'localhost'),
+  TRUST_PROXY: getEnvironment('TRUST_PROXY', 'false'),
 
   FRONTEND_ORIGINS: getEnvironment('FRONTEND_ORIGINS', 'http://localhost:3000').split(','),
 

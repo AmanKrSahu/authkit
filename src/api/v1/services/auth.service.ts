@@ -36,7 +36,13 @@ import {
   verifyJwtToken,
 } from '@core/common/utils/jwt';
 import { logger } from '@core/common/utils/logger';
-import { checkForNewDevice, checkRateLimit } from '@core/common/utils/metadata';
+import {
+  checkForNewDevice,
+  checkLoginLockout,
+  checkRateLimit,
+  clearLoginLockout,
+  incrementLoginFailedAttempts,
+} from '@core/common/utils/metadata';
 import { deleteCache, getCache, incrementCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
@@ -192,6 +198,8 @@ export class AuthService {
     try {
       const { email, password, ipAddress, userAgent } = loginData;
 
+      await checkLoginLockout(email);
+
       const user = await prisma.user.findUnique({
         where: { email },
         include: {
@@ -202,6 +210,7 @@ export class AuthService {
       });
 
       if (!user) {
+        await incrementLoginFailedAttempts(email);
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
@@ -210,6 +219,7 @@ export class AuthService {
 
       const credentialAccount = user.accounts[0];
       if (!credentialAccount?.password) {
+        await incrementLoginFailedAttempts(email);
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
@@ -218,11 +228,15 @@ export class AuthService {
 
       const isValidPassword = await comparePassword(password, credentialAccount.password);
       if (!isValidPassword) {
+        await incrementLoginFailedAttempts(email);
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
         );
       }
+
+      // Clear lockout counters upon successful login
+      await clearLoginLockout(email);
 
       if (user.enable2FA) {
         const { ...userInfo } = user;

@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: authkit_api_prod
     restart: always
-    ports:
-      - '8000:8000'
+    expose:
+      - '8000'
     env_file:
       - .env
     environment:
@@ -70,6 +70,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - authkit_network
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: authkit_nginx_prod
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/templates:/etc/nginx/templates:ro
+    environment:
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME}
+    depends_on:
+      - api
     networks:
       - authkit_network
 
