@@ -97,7 +97,7 @@ Our OIDC Provider implementation adheres to strict security standards to safely 
   - **Strict Cookie Policy:** Interaction session cookies are `HttpOnly`, `Signed`, and `SameSite=Lax`.
   - **Short-Lived Sessions:** Interaction sessions expire quickly (e.g., 15 minutes) to reduce the attack window.
 - **Token Rotation:** Refresh Tokens issued via OIDC are rotated upon use, detecting and preventing token theft and replay.
-- **Context Preservation:** We strictly bind external authentication flows (Google, Magic Link) to the initiating OIDC transaction using the `uid` parameter (via OAuth `state` or Redis). This prevents session injection attacks where a user starts a flow in one context and finishes it in another.
+- **Context Preservation:** We strictly bind external authentication flows (Google, Magic Link) to the initiating OIDC transaction. For Google OAuth, the `state` parameter is a cryptographically secure random `stateId` (UUID) whose payload is cached in Redis (`oauth_state:${stateId}`). Upon callback, the state is validated, immediately deleted (single-use replay protection), and the associated `uid` and `redirectUrl` are processed. This blocks login CSRF and session injection.
 - **MFA Enforcement:** Multi-Factor Authentication is enforced _within_ the OIDC interaction pipeline. If a user has MFA enabled, the OIDC flow halts until a valid TOTP code is provided, preventing bypass via single-factor entry points.
 
 ### 2.5. Session Bridging & Unified Identity
