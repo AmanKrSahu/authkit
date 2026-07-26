@@ -62,9 +62,10 @@ export class AuthController {
 
   @AsyncHandler
   public resendVerification = async (req: Request, res: Response) => {
+    const ipAddress = getClientIP(req);
     const body = resendVerificationSchema.parse({ ...req.body });
 
-    await this.authService.resendVerification(body);
+    await this.authService.resendVerification({ ...body, ipAddress });
 
     return res.status(HTTPSTATUS.CREATED).json({
       success: true,

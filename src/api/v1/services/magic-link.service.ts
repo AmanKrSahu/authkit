@@ -43,7 +43,8 @@ export class MagicLinkService {
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        // Return generic success to prevent account enumeration
+        return null;
       }
 
       const token = generateRandomToken();

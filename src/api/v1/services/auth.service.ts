@@ -157,18 +157,24 @@ export class AuthService {
 
   public async resendVerification(resendVerificationData: ResendVerificationData) {
     try {
-      const { email, redirectUrl } = resendVerificationData;
+      const { email, redirectUrl, ipAddress } = resendVerificationData;
+
+      if (ipAddress) {
+        await checkRateLimit(email, ipAddress, RATE_LIMIT.OTP.MAX_REQUESTS, 'RESEND_VERIFICATION');
+      }
 
       const user = await prisma.user.findUnique({
         where: { email },
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        // Return generic success to prevent account enumeration
+        return null;
       }
 
       if (user.emailVerified) {
-        throw new BadRequestException('Email is already verified');
+        // Return generic success to prevent account enumeration
+        return null;
       }
 
       const verificationToken = generateRandomToken();
@@ -379,15 +385,16 @@ export class AuthService {
     try {
       const { email, ipAddress } = forgotPasswordData;
 
+      await checkRateLimit(email, ipAddress, RATE_LIMIT.OTP.MAX_REQUESTS);
+
       const user = await prisma.user.findUnique({
         where: { email },
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        // Return generic success to prevent account enumeration
+        return null;
       }
-
-      await checkRateLimit(email, ipAddress, RATE_LIMIT.OTP.MAX_REQUESTS);
 
       const otp = generateOTP();
 

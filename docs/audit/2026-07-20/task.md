@@ -25,7 +25,7 @@ Goal: close directly-exploitable auth bypasses, rotate compromised secrets, and 
 | 1.8  | **Add rate limiters to magic-link & MFA-verify routes** (+ per-`userId` MFA counter)                                                                                            | SEC-H4          | P1       | S          | 1.7             | Stops OTP/backup brute force & email bombing         | **Done** |
 | 1.9  | **Secure Redis** — `requirepass` + client password, TLS in prod, stop publishing dev port; encrypt/shorten `mfa_setup` TTL                                                      | SEC-H5          | P1       | M          | none            | Protects tokens/TOTP secrets at rest                 | **Done** |
 | 1.10 | **Verify OAuth `state` server-side** (issue random state, store in Redis, check on callback)                                                                                    | SEC-H6          | P1       | M          | none            | Closes login-CSRF                                    | **Done** |
-| 1.11 | **Uniform recovery responses** — no user enumeration on forgot-password/resend/magic-link; rate-limit before lookup                                                             | SEC-H7          | P1       | S          | none            | Removes account enumeration                          | Todo     |
+| 1.11 | **Uniform recovery responses** — no user enumeration on forgot-password/resend/magic-link; rate-limit before lookup                                                             | SEC-H7          | P1       | S          | none            | Removes account enumeration                          | **Done** |
 
 **Phase 1 exit criteria:** all Critical + High findings resolved and verified; secrets rotated; a smoke test covers reset, OIDC-login-with-MFA, and revocation.
 
@@ -68,13 +68,13 @@ Goal: harden the medium-risk surface, add the safety net (tests, monitoring), an
 
 ### 2C — Safety net & operability
 
-| #    | Task                                                                     | Source  | Priority | Complexity | Dependencies | Status |
-| ---- | ------------------------------------------------------------------------ | ------- | -------- | ---------- | ------------ | ------ |
-| 2.22 | **Automated test suite** (vitest + supertest + Testcontainers) + CI      | FR-1    | P1       | L          | none         | Todo   |
-| 2.23 | **Audit logs** (`AuditLog` model + `AuditService` + `/admin/audit-logs`) | FR-2    | P1       | M          | none         | Todo   |
-| 2.24 | **Real dependency health checks** (`/health/live`, `/health/ready`)      | FR-8    | P2       | S          | none         | Todo   |
-| 2.25 | **Observability** (`prom-client` `/metrics`, request IDs, optional OTel) | FR-7    | P2       | M          | none         | Todo   |
-| 2.26 | Reconcile docs vs. code (rate-limit numbers, PPI)                        | feat §4 | P3       | S          | none         | Todo   |
+| #    | Task                                                                     | Source       | Priority | Complexity | Dependencies | Status |
+| ---- | ------------------------------------------------------------------------ | ------------ | -------- | ---------- | ------------ | ------ |
+| 2.22 | **Automated test suite** (vitest + supertest + Testcontainers) + CI      | FR-1         | P1       | L          | none         | Todo   |
+| 2.23 | **Audit logs** (`AuditLog` model + `AuditService` + `/admin/audit-logs`) | FR-2         | P1       | M          | none         | Todo   |
+| 2.24 | **Real dependency health checks** (`/health/live`, `/health/ready`)      | FR-8         | P2       | S          | none         | Todo   |
+| 2.25 | **Observability** (`prom-client` `/metrics`, request IDs, optional OTel) | FR-7         | P2       | M          | none         | Todo   |
+| 2.26 | Reconcile docs vs. code (rate-limit numbers, PPI)                        | FR Section 4 | P3       | S          | none         | Todo   |
 
 **Phase 2 exit criteria:** all Medium findings resolved; test coverage on auth/mfa/oidc flows in CI; metrics + real health checks live; performance indexes migrated.
 

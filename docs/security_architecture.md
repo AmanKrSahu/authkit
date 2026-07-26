@@ -118,6 +118,13 @@ To ensure robust cryptographic security, AuthKit includes an automated script (`
 3. **OIDC JWKS**: A securely generated RS256 keypair (using `jose`) for signing OIDC tokens.
    By keeping secret generation automated, we reduce the risk of weak, manually chosen passwords or keys being used in production.
 
+### 2.7. Username & Account Enumeration Prevention
+
+To prevent attackers from compiling lists of registered email addresses, AuthKit enforces indistinguishable responses on recovery and verification endpoints:
+
+- **Uniform API Responses**: The forgot-password (`POST /auth/forgot-password`), resend-verification (`POST /auth/resend-verification`), and magic-link (`POST /magic-link/login`) endpoints return a generic success message and identical HTTP status codes regardless of whether the email address is registered or verified in the database.
+- **Pre-Lookup Rate Limiting**: In-service rate limit checks are executed immediately upon receiving requests (prior to database queries or user lookups). This prevents resource exhaustion and timing attacks.
+
 ---
 
 ## 3. The Role of Redis

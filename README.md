@@ -129,6 +129,7 @@ The infrastructure adheres to a **Modular Layered Architecture (MLA)** utilizing
 - **Atomic Session Management**: Redis-backed session lifecycle with real-time revocation capabilities.
 - **Data Integrity**: Bcrypt-hashed credentials and deterministic redirection whitelisting.
 - **Defensive Middleware**: Global rate-limiting, Helmet-enforced security headers, and CORS strictness.
+- **Account Enumeration Prevention**: Enforces uniform, indistinguishable success responses across forgot-password, resend-verification, and magic-link login routes, preventing user registration probing.
 - **Per-Account Lockout**: Redis-backed account lockout (5 failed attempts within 15 minutes locks the account for 15 minutes) preventing distributed brute-force guess attempts.
 - **Ingress Gateway Isolation**: Routing production traffic through an Nginx proxy container to isolate backend sockets.
 - **Dynamic Proxy Trust**: Custom, environment-validated `TRUST_PROXY` Express configuration.
