@@ -31,6 +31,7 @@ import {
 import {
   checkForNewDevice,
   checkMfaRateLimit,
+  clearMfaRateLimit,
   incrementMfaRateLimit,
 } from '@core/common/utils/metadata';
 import { deleteCache, getCache, setCache } from '@core/common/utils/redis-helpers';
@@ -205,11 +206,7 @@ export class MfaService {
         throw new UnauthorizedException('MFA not enabled for this user');
       }
 
-      const mfaAttempts = await checkMfaRateLimit(
-        user.email,
-        ipAddress,
-        RATE_LIMIT.MFA.MAX_ATTEMPTS
-      );
+      const mfaAttempts = await checkMfaRateLimit(user.id, RATE_LIMIT.MFA.MAX_ATTEMPTS);
 
       let isValid = false;
 
@@ -243,12 +240,14 @@ export class MfaService {
       if (!isValid) {
         const remainingAttempts = RATE_LIMIT.MFA.MAX_ATTEMPTS - (mfaAttempts + 1);
 
-        await incrementMfaRateLimit(user.email, ipAddress);
+        await incrementMfaRateLimit(user.id);
 
         throw new BadRequestException(
           `Invalid MFA code. ${remainingAttempts} attempt(s) remaining.`
         );
       }
+
+      await clearMfaRateLimit(user.id);
 
       const deviceFingerprint = generateDeviceFingerprint(userAgent, ipAddress);
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);

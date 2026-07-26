@@ -12,7 +12,7 @@ import {
 import { calculateExpirationDate, FIFTEEN_MINUTES } from '@core/common/utils/date-time';
 import { mfaTokenSignOptions, refreshTokenSignOptions, signJwtToken } from '@core/common/utils/jwt';
 import { logger } from '@core/common/utils/logger';
-import { checkForNewDevice } from '@core/common/utils/metadata';
+import { checkForNewDevice, checkRateLimit } from '@core/common/utils/metadata';
 import { deleteCache, getCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
@@ -20,6 +20,8 @@ import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import type { EmailService } from '@core/mailers/resend';
+
+import { RATE_LIMIT } from '../../../core/common/constants/rate-limit.constant';
 
 export class MagicLinkService {
   private emailService: EmailService;
@@ -30,7 +32,11 @@ export class MagicLinkService {
 
   public async login(magicLinkLoginData: MagicLinkLoginData) {
     try {
-      const { email, uid, redirectUrl } = magicLinkLoginData;
+      const { email, uid, redirectUrl, ipAddress } = magicLinkLoginData;
+
+      if (ipAddress) {
+        await checkRateLimit(email, ipAddress, RATE_LIMIT.OTP.MAX_REQUESTS, 'MAGIC_LINK');
+      }
 
       const user = await prisma.user.findUnique({
         where: { email },

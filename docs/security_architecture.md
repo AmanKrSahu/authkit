@@ -69,8 +69,9 @@ We use **Redis** to implement sliding-window rate limiting.
 - **Upstream Gateway Protection**: In production, public traffic routes through an Nginx container. Nginx terminates SSL/TLS and overwrites proxy headers (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`), stripping out client-side header spoofing.
 - **Proxy Trust Configuration**: Express is configured dynamically via the `TRUST_PROXY` environment variable. When set to trust the proxy, Express securely resolves client IPs using native `req.ip`.
 - **Global Limiter:** Protects the entire API from DDoS attacks (e.g., 200 requests/15min).
-- **Auth Limiter:** Stricter limits on `/auth/*` endpoints (e.g., Login, Register) to prevent Brute Force and Credential Stuffing attacks.
-- **MFA/OTP Limiter:** Very strict limits (e.g., 3-5 attempts) on OTP verification to prevent guessing.
+- **Auth Limiter:** Stricter limits on `/auth/*` endpoints, magic-link routes, and MFA verify routes via the `authRateLimiter` middleware to prevent brute-force attacks.
+- **MFA/OTP Limiter:** Very strict limits (maximum 5 attempts) on MFA verification. Attempts are tracked in Redis per `userId` globally (`mfa_limit:<userId>`) to prevent brute-force bypasses via IP rotation.
+- **Magic-Link Send Limiter:** Magic link generation requests (`POST /magic-link/login`) enforce the in-service rate limit checker (`rate_limit:MAGIC_LINK:<email>:<ip>`) to prevent mail-bombing and SMTP resource abuse.
 
 ### 2.3. Data Sanitization
 

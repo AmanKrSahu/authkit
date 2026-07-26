@@ -135,11 +135,10 @@ export const checkRateLimit = async (
  * Returns the current attempt count.
  */
 export const checkMfaRateLimit = async (
-  email: string,
-  ipAddress: string,
+  userId: string,
   limit: number = RATE_LIMIT.MFA.MAX_ATTEMPTS
 ): Promise<number> => {
-  const key = `mfa_limit:${email}:${ipAddress}`;
+  const key = `mfa_limit:${userId}`;
   // We just get the value, increment happens separately if failed
   const val = await getCache(key);
   const attempts = val ? Number.parseInt(val, 10) : 0;
@@ -153,7 +152,15 @@ export const checkMfaRateLimit = async (
 /**
  * Increments the MFA attempt counter in Redis.
  */
-export const incrementMfaRateLimit = async (email: string, ipAddress: string): Promise<void> => {
-  const key = `mfa_limit:${email}:${ipAddress}`;
+export const incrementMfaRateLimit = async (userId: string): Promise<void> => {
+  const key = `mfa_limit:${userId}`;
   await incrementCache(key, RATE_LIMIT.MFA.LOCKOUT_MS / 1000);
+};
+
+/**
+ * Clears the MFA attempt counter in Redis.
+ */
+export const clearMfaRateLimit = async (userId: string): Promise<void> => {
+  const key = `mfa_limit:${userId}`;
+  await deleteCache(key);
 };

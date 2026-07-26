@@ -190,7 +190,7 @@ _Note: The email address is no longer supplied in the request body; the identity
 
 - **Route**: `POST /magic-link/login`
 - **Description**: Sends a magic login link to the user's email address.
-- **Security**: Public
+- **Security**: Public (Rate-limited via `authRateLimiter` and in-service checks)
 
 **Request Body**
 
@@ -206,7 +206,7 @@ _Note: The email address is no longer supplied in the request body; the identity
 
 - **Route**: `POST /magic-link/verify`
 - **Description**: Verifies the magic link token and authenticates the user. If `uid` was provided during login, it resumes the OIDC flow.
-- **Security**: Public
+- **Security**: Public (Rate-limited via `authRateLimiter`)
 
 **Request Body**
 
@@ -232,7 +232,7 @@ _Note: The email address is no longer supplied in the request body; the identity
 
 - **Route**: `POST /mfa/verify-setup`
 - **Description**: Verifies the TOTP code and enables MFA.
-- **Security**: Bearer Token
+- **Security**: Bearer Token (Rate-limited via `authRateLimiter`)
 
 **Request Body**
 
@@ -246,7 +246,7 @@ _Note: The email address is no longer supplied in the request body; the identity
 
 - **Route**: `POST /mfa/verify-login`
 - **Description**: Verifies the MFA code during the login flow.
-- **Security**: MFA login token (cookie)
+- **Security**: MFA login token cookie (Rate-limited via `authRateLimiter` and capped at 5 failed attempts per user ID)
 
 **Request Body**
 
