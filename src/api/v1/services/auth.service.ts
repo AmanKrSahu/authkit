@@ -36,7 +36,13 @@ import {
   verifyJwtToken,
 } from '@core/common/utils/jwt';
 import { logger } from '@core/common/utils/logger';
-import { checkForNewDevice, checkRateLimit } from '@core/common/utils/metadata';
+import {
+  checkForNewDevice,
+  checkLoginLockout,
+  checkRateLimit,
+  clearLoginLockout,
+  incrementLoginFailedAttempts,
+} from '@core/common/utils/metadata';
 import { deleteCache, getCache, incrementCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
@@ -151,18 +157,24 @@ export class AuthService {
 
   public async resendVerification(resendVerificationData: ResendVerificationData) {
     try {
-      const { email, redirectUrl } = resendVerificationData;
+      const { email, redirectUrl, ipAddress } = resendVerificationData;
+
+      if (ipAddress) {
+        await checkRateLimit(email, ipAddress, RATE_LIMIT.OTP.MAX_REQUESTS, 'RESEND_VERIFICATION');
+      }
 
       const user = await prisma.user.findUnique({
         where: { email },
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        // Return generic success to prevent account enumeration
+        return null;
       }
 
       if (user.emailVerified) {
-        throw new BadRequestException('Email is already verified');
+        // Return generic success to prevent account enumeration
+        return null;
       }
 
       const verificationToken = generateRandomToken();
@@ -192,6 +204,8 @@ export class AuthService {
     try {
       const { email, password, ipAddress, userAgent } = loginData;
 
+      await checkLoginLockout(email);
+
       const user = await prisma.user.findUnique({
         where: { email },
         include: {
@@ -202,6 +216,7 @@ export class AuthService {
       });
 
       if (!user) {
+        await incrementLoginFailedAttempts(email);
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
@@ -210,6 +225,7 @@ export class AuthService {
 
       const credentialAccount = user.accounts[0];
       if (!credentialAccount?.password) {
+        await incrementLoginFailedAttempts(email);
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
@@ -218,11 +234,15 @@ export class AuthService {
 
       const isValidPassword = await comparePassword(password, credentialAccount.password);
       if (!isValidPassword) {
+        await incrementLoginFailedAttempts(email);
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
         );
       }
+
+      // Clear lockout counters upon successful login
+      await clearLoginLockout(email);
 
       if (user.enable2FA) {
         const { ...userInfo } = user;
@@ -365,15 +385,16 @@ export class AuthService {
     try {
       const { email, ipAddress } = forgotPasswordData;
 
+      await checkRateLimit(email, ipAddress, RATE_LIMIT.OTP.MAX_REQUESTS);
+
       const user = await prisma.user.findUnique({
         where: { email },
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
+        // Return generic success to prevent account enumeration
+        return null;
       }
-
-      await checkRateLimit(email, ipAddress, RATE_LIMIT.OTP.MAX_REQUESTS);
 
       const otp = generateOTP();
 
@@ -438,21 +459,23 @@ export class AuthService {
 
   public async resetPassword(resetPasswordData: ResetPasswordData) {
     try {
-      const { email, password, resetToken } = resetPasswordData;
+      const { password, resetToken } = resetPasswordData;
+
+      const { payload } = verifyJwtToken<ResetTPayload>(resetToken, {
+        secret: resetTokenSignOptions.secret,
+      });
+
+      if (payload?.purpose !== 'PASSWORD_RESET') {
+        throw new UnauthorizedException('Invalid reset token');
+      }
+
+      const email = payload.email;
 
       const user = await prisma.user.findUnique({
         where: { email },
       });
 
       if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
-      const { payload } = verifyJwtToken<ResetTPayload>(resetToken, {
-        secret: resetTokenSignOptions.secret,
-      });
-
-      if (!payload) {
         throw new UnauthorizedException('Invalid reset token');
       }
 
@@ -539,6 +562,12 @@ export class AuthService {
         throw new BadRequestException('New password cannot be the same as the old one');
       }
 
+      // Fetch active sessions to invalidate cache
+      const activeSessions = await prisma.session.findMany({
+        where: { userId: userId, isRevoked: false },
+        select: { id: true },
+      });
+
       const hashedPassword = await hashPassword(newPassword);
 
       await prisma.$transaction(async tx => {
@@ -560,6 +589,11 @@ export class AuthService {
           },
         });
       });
+
+      // Invalidate Redis keys
+      for (const session of activeSessions) {
+        await deleteCache(`session:${session.id}`);
+      }
 
       if (config.NODE_ENV === 'production') {
         await this.emailService.sendPasswordChangeConfirmation(user.email, user.name);

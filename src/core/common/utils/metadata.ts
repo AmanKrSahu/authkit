@@ -3,7 +3,7 @@ import prisma from '@core/database/prisma';
 import type { Request } from 'express';
 
 import { RATE_LIMIT } from '../constants/rate-limit.constant';
-import { getCache, incrementCache } from './redis-helpers';
+import { deleteCache, getCache, incrementCache, setCache } from './redis-helpers';
 
 /* ============================================================================
  * Application Metadata Utilities
@@ -37,11 +37,49 @@ export const getUserAgent = (req: Request): string => {
  * Determines the client IP address, accounting for reverse proxies.
  */
 export const getClientIP = (req: Request): string => {
-  return (
-    ((req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.connection?.remoteAddress) ??
-    req.socket?.remoteAddress ??
-    'Unknown'
-  );
+  return req.ip ?? '127.0.0.1';
+};
+
+/**
+ * Checks if a user is temporarily locked out due to too many failed login attempts.
+ */
+export const checkLoginLockout = async (email: string): Promise<void> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const lockoutKey = `lockout:${normalizedEmail}`;
+
+  const isLocked = await getCache(lockoutKey);
+  if (isLocked) {
+    throw new BadRequestException(
+      'Too many failed login attempts. This account is temporarily locked. Please try again later.'
+    );
+  }
+};
+
+/**
+ * Increments the failed login attempts counter and applies a lockout if it exceeds the limit.
+ */
+export const incrementLoginFailedAttempts = async (email: string): Promise<void> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const lockoutKey = `lockout:${normalizedEmail}`;
+  const attemptsKey = `failed_attempts:${normalizedEmail}`;
+
+  const attempts = await incrementCache(attemptsKey, RATE_LIMIT.AUTH.WINDOW_MS / 1000);
+  if (attempts >= RATE_LIMIT.AUTH.MAX_REQUESTS) {
+    await setCache(lockoutKey, 'true', RATE_LIMIT.AUTH.WINDOW_MS / 1000);
+    await deleteCache(attemptsKey);
+  }
+};
+
+/**
+ * Clears any active failed login attempts and lockout counters.
+ */
+export const clearLoginLockout = async (email: string): Promise<void> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const lockoutKey = `lockout:${normalizedEmail}`;
+  const attemptsKey = `failed_attempts:${normalizedEmail}`;
+
+  await deleteCache(lockoutKey);
+  await deleteCache(attemptsKey);
 };
 
 /* ============================================================================
@@ -97,11 +135,10 @@ export const checkRateLimit = async (
  * Returns the current attempt count.
  */
 export const checkMfaRateLimit = async (
-  email: string,
-  ipAddress: string,
+  userId: string,
   limit: number = RATE_LIMIT.MFA.MAX_ATTEMPTS
 ): Promise<number> => {
-  const key = `mfa_limit:${email}:${ipAddress}`;
+  const key = `mfa_limit:${userId}`;
   // We just get the value, increment happens separately if failed
   const val = await getCache(key);
   const attempts = val ? Number.parseInt(val, 10) : 0;
@@ -115,7 +152,15 @@ export const checkMfaRateLimit = async (
 /**
  * Increments the MFA attempt counter in Redis.
  */
-export const incrementMfaRateLimit = async (email: string, ipAddress: string): Promise<void> => {
-  const key = `mfa_limit:${email}:${ipAddress}`;
+export const incrementMfaRateLimit = async (userId: string): Promise<void> => {
+  const key = `mfa_limit:${userId}`;
   await incrementCache(key, RATE_LIMIT.MFA.LOCKOUT_MS / 1000);
+};
+
+/**
+ * Clears the MFA attempt counter in Redis.
+ */
+export const clearMfaRateLimit = async (userId: string): Promise<void> => {
+  const key = `mfa_limit:${userId}`;
+  await deleteCache(key);
 };

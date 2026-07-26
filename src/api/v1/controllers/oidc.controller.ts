@@ -93,6 +93,7 @@ export class OidcController {
         message: 'MFA verification required',
         uid: req.params.uid,
       });
+      return;
     }
 
     await this.oidcService.submitLogin(req, res, user.id);

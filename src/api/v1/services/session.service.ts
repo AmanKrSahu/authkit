@@ -47,17 +47,16 @@ export class SessionService {
       }
 
       // 1. Try Redis
-      const cachedUserStr = await getCache(`session:${sessionId}`);
-      if (cachedUserStr) {
-        const user = JSON.parse(cachedUserStr);
+      const cachedSessionStr = await getCache(`session:${sessionId}`);
+      if (cachedSessionStr) {
+        const session = JSON.parse(cachedSessionStr);
         // Verify user owns this session (security check)
-        if (user.id === userId) {
-          // The cached user object has sessions array
-          // Typings might be lost in JSON.parse, using any/careful check
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const session = user.sessions?.find((s: any) => s.id === sessionId);
-          if (session && !session.isRevoked && new Date(session.expiresAt) > new Date()) {
-            return session;
+        if (session?.userId === userId) {
+          const isExpired = new Date(session.expiresAt).getTime() < Date.now();
+          if (!session.isRevoked && !isExpired) {
+            // Destructure to return session properties matching DB fallback schema
+            const { user: _user, ...sessionWithoutUser } = session;
+            return sessionWithoutUser;
           }
         }
       }

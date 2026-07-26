@@ -6,7 +6,7 @@ import { ExtractJwt, Strategy as JwtStrategy } from 'passport-jwt';
 import { config } from '../../config/app.config';
 import prisma from '../../database/prisma';
 import { ONE_DAY } from '../utils/date-time';
-import { getCache, setCache } from '../utils/redis-helpers';
+import { deleteCache, getCache, setCache } from '../utils/redis-helpers';
 
 interface JwtPayload {
   userId: string;
@@ -26,37 +26,55 @@ export const setupJwtStrategy = (passport: PassportStatic) => {
     new JwtStrategy(options, async (req, payload: JwtPayload, done) => {
       try {
         // 1. Check Redis Cache
-        const cachedUser = await getCache(`session:${payload.sessionId}`);
-        if (cachedUser) {
-          req.sessionId = payload.sessionId;
-          return done(null, JSON.parse(cachedUser));
+        const cachedSession = await getCache(`session:${payload.sessionId}`);
+        if (cachedSession) {
+          const session = JSON.parse(cachedSession);
+          const isExpired = new Date(session.expiresAt).getTime() < Date.now();
+
+          if (session && !session.isRevoked && !isExpired && session.userId === payload.userId) {
+            req.sessionId = payload.sessionId;
+            return done(null, session.user);
+          }
+
+          // Cache is invalid or expired, clear it
+          await deleteCache(`session:${payload.sessionId}`);
         }
 
         // 2. Fallback to DB
-        const user = await prisma.user.findUnique({
-          where: { id: payload.userId },
-          include: { sessions: true },
+        const session = await prisma.session.findUnique({
+          where: { id: payload.sessionId },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                name: true,
+                enable2FA: true,
+              },
+            },
+          },
         });
 
-        if (!user) {
-          return done(null, false);
-        }
-
-        const session = user.sessions.find(s => s.id === payload.sessionId);
-        if (!session || session.expiresAt < new Date() || session.isRevoked) {
+        if (
+          !session ||
+          session.userId !== payload.userId ||
+          session.isRevoked ||
+          session.expiresAt < new Date()
+        ) {
           return done(null, false);
         }
 
         req.sessionId = payload.sessionId;
 
-        // 3. Cache the result (User object)
-        // We sanitize/optimize what we cache to avoid sensitive data leaks if possible,
-        // but current implementation returns full user object. Structure should match.
-        // We will cache for 1 day or session expiry, whichever is less/appropriate.
-        // For simplicity, 1 day sliding window.
-        await setCache(`session:${payload.sessionId}`, JSON.stringify(user), ONE_DAY);
+        // 3. Cache the result (Session object with sanitized user)
+        const remainingTimeMs = new Date(session.expiresAt).getTime() - Date.now();
+        const ttlSeconds = Math.max(Math.floor(remainingTimeMs / 1000), 0);
+        const cacheTtl = Math.min(ttlSeconds, ONE_DAY);
 
-        return done(null, user);
+        await setCache(`session:${payload.sessionId}`, JSON.stringify(session), cacheTtl);
+
+        return done(null, session.user);
       } catch (error) {
         return done(error, false);
       }

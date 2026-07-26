@@ -46,7 +46,7 @@ All endpoints listed below are relative to this base path.
 ### 2.2. Login
 
 - **Route**: `POST /auth/login`
-- **Description**: Authenticates a user and returns access and refresh tokens.
+- **Description**: Authenticates a user and returns access and refresh tokens. If the account experiences 5 consecutive failed logins, it is temporarily locked out for 15 minutes.
 - **Security**: Public
 
 **Request Body**
@@ -57,6 +57,8 @@ All endpoints listed below are relative to this base path.
   "password": "strongPassword123"
 }
 ```
+
+_Note: On lockout, the endpoint returns a `400 Bad Request` status code with a message stating that the account is temporarily locked._
 
 ### 2.3. Logout
 
@@ -127,11 +129,12 @@ All endpoints listed below are relative to this base path.
 
 ```json
 {
-  "email": "john@example.com",
   "password": "newStrongPassword123",
   "confirmPassword": "newStrongPassword123"
 }
 ```
+
+_Note: The email address is no longer supplied in the request body; the identity is securely derived directly from the verified reset token payload to prevent account takeover._
 
 ### 2.9. Change Password
 
@@ -187,7 +190,7 @@ All endpoints listed below are relative to this base path.
 
 - **Route**: `POST /magic-link/login`
 - **Description**: Sends a magic login link to the user's email address.
-- **Security**: Public
+- **Security**: Public (Rate-limited via `authRateLimiter` and in-service checks)
 
 **Request Body**
 
@@ -203,7 +206,7 @@ All endpoints listed below are relative to this base path.
 
 - **Route**: `POST /magic-link/verify`
 - **Description**: Verifies the magic link token and authenticates the user. If `uid` was provided during login, it resumes the OIDC flow.
-- **Security**: Public
+- **Security**: Public (Rate-limited via `authRateLimiter`)
 
 **Request Body**
 
@@ -229,7 +232,7 @@ All endpoints listed below are relative to this base path.
 
 - **Route**: `POST /mfa/verify-setup`
 - **Description**: Verifies the TOTP code and enables MFA.
-- **Security**: Bearer Token
+- **Security**: Bearer Token (Rate-limited via `authRateLimiter`)
 
 **Request Body**
 
@@ -243,7 +246,7 @@ All endpoints listed below are relative to this base path.
 
 - **Route**: `POST /mfa/verify-login`
 - **Description**: Verifies the MFA code during the login flow.
-- **Security**: MFA login token (cookie)
+- **Security**: MFA login token cookie (Rate-limited via `authRateLimiter` and capped at 5 failed attempts per user ID)
 
 **Request Body**
 

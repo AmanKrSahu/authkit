@@ -13,6 +13,7 @@ export interface VerifyEmailData {
 export interface ResendVerificationData {
   email: string;
   redirectUrl?: string;
+  ipAddress?: string;
 }
 
 export interface LoginData {
@@ -41,7 +42,7 @@ export interface VerifyOtpData {
 }
 
 export interface ResetPasswordData {
-  email: string;
+  email?: string;
   password: string;
   confirmPassword: string;
   resetToken: string;

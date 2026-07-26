@@ -1,7 +1,7 @@
 # AuthKit: Identity Provider (IdP) & IAM Infrastructure
 
 <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" /> <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" /> <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" />
-<img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" /> <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" /> <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" /> <img src="https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black" /> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
+<img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" /> <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" /> <img src="https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white" /> <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" /> <img src="https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black" /> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
 
 ## 1. Project Abstract
 
@@ -105,8 +105,14 @@ AuthKit is a production-grade **Identity Provider (IdP)** and **Identity & Acces
 
 ### 3.3 Access Vectors
 
-- **API Interface**: `http://localhost:8000/api/v1/`
-- **OpenAPI/Swagger Portal**: `http://localhost:8000/docs`
+Depending on your configured environment (direct execution vs. behind Nginx):
+
+- **Local Dev API**: `http://localhost:8000/api/v1/`
+- **Local Dev Swagger Portal**: `http://localhost:8000/docs`
+- **Production API (behind Nginx)**: `http://localhost/api/v1/`
+- **Production Swagger Portal (behind Nginx)**: `http://localhost/docs`
+
+👉 Full testing guide: [**Testing & Deployment Workflows**](./docs/testing-workflows.md)
 
 ---
 
@@ -123,8 +129,23 @@ The infrastructure adheres to a **Modular Layered Architecture (MLA)** utilizing
 - **Atomic Session Management**: Redis-backed session lifecycle with real-time revocation capabilities.
 - **Data Integrity**: Bcrypt-hashed credentials and deterministic redirection whitelisting.
 - **Defensive Middleware**: Global rate-limiting, Helmet-enforced security headers, and CORS strictness.
+- **Account Enumeration Prevention**: Enforces uniform, indistinguishable success responses across forgot-password, resend-verification, and magic-link login routes, preventing user registration probing.
+- **Per-Account Lockout**: Redis-backed account lockout (5 failed attempts within 15 minutes locks the account for 15 minutes) preventing distributed brute-force guess attempts.
+- **Ingress Gateway Isolation**: Routing production traffic through an Nginx proxy container to isolate backend sockets.
+- **Dynamic Proxy Trust**: Custom, environment-validated `TRUST_PROXY` Express configuration.
+- **Enhanced Ingress Rate-Limiting**: Enforces strict route-level rate limiting across login, register, magic-link, and MFA endpoints, plus user-bound attempt budgets to prevent distributed bypasses.
+- **Hardened Caching Layer**: Implements full Redis password authentication, production TLS transport options, loopback port containment, and AES-256-GCM encryption of cached TOTP setup secrets.
 
 👉 Full Documentation: [**Detailed Security Architecture**](./docs/security_architecture.md)
+
+### 4.1 Architectural Design Decisions Registry
+
+To track and audit architectural decisions, we maintain a registry of design logs detailing critical security solutions:
+
+| Design Decision Record                                                                                         | Technical & Functional Description                                                                        | Context / Origin                                                              |
+| :------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| [**Unified Origin Validator**](./docs/design-decisions/audit-2026-07-20/unified-origin-validator.md)           | Unifies CORS, CSRF, and redirect whitelisting logic to block subdomain suffix spoofing and enforce HTTPS. | **July 2026 Security Audit** (Task [SEC-H1](./docs/audit/2026-07-20/task.md)) |
+| [**Client IP & Lockout Security**](./docs/design-decisions/audit-2026-07-20/client-ip-and-lockout-security.md) | Formulates the Nginx reverse-proxy ingress, proxy header filtering, and Redis-backed login lockouts.      | **July 2026 Security Audit** (Task [SEC-H3](./docs/audit/2026-07-20/task.md)) |
 
 ---
 
@@ -171,6 +192,7 @@ The audit is broken down into specialized focus areas. You can review the exhaus
 - [**Security Audit Report (`security-audit.md`)**](./docs/audit/2026-07-20/security-audit.md) — Exhaustive analysis of threat vectors, session caching vulnerabilities, and sanitization leaks.
 - [**Performance & Scalability Audit (`performance.md`)**](./docs/audit/2026-07-20/performance.md) — Profiling query paths, database connection pooling, and latency-heavy transactions.
 - [**Enterprise Feature Recommendations (`feature-recommendations.md`)**](./docs/audit/2026-07-20/feature-recommendations.md) — Functional specifications for B2B multi-tenancy, passkeys, webhooks, and audit trails.
+- [**Supplementary Findings (`supplementary-findings.md`)**](./docs/audit/2026-07-20/supplementary-findings.md) — Additional architectural findings and recommendations discovered during the planning phase of the July 2026 security audit (specifically addressing proxy trust dynamics, header verification, and reverse-proxy deployments).
 
 ---
 
@@ -213,8 +235,9 @@ For details on individual ticket tracking, metrics, and exit criteria, refer dir
 
 ---
 
-## 🚀 Need Help??
+## 📬 Contact
 
-Feel free to contact me on [Linkedin](https://www.linkedin.com/in/amankrsahu)
+Found a bug, have a feature request, or want to contribute? Feel free to open an issue, start a discussion, or connect with me.
 
-[![Instagram URL](https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/itz.amansahu/) &nbsp; [![Discord URL](https://img.shields.io/badge/Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white)](discordapp.com/users/539751578866024479)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/amankrsahu)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discordapp.com/users/539751578866024479)
