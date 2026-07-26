@@ -376,6 +376,8 @@ return ((req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.connect
 
 Set `app.set('trust proxy', <exact hop count>)` matching your deployment topology and derive the IP from `req.ip` (which Express validates against the trusted-proxy chain). Add a per-account failed-login counter with temporary lockout.
 
+For additional analysis on proxy trust configurations, IP spoofing prevention, and multi-tenant Nginx setup dependencies discovered during remediation planning, see [`supplementary-findings.md`](./supplementary-findings.md).
+
 ### References
 
 CWE-307 (Improper Restriction of Excessive Authentication Attempts), CWE-290 (Authentication Bypass by Spoofing), CWE-348.

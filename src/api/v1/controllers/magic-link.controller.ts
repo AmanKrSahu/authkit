@@ -27,9 +27,10 @@ export class MagicLinkController {
 
   @AsyncHandler
   public login = async (req: Request, res: Response) => {
+    const ipAddress = getClientIP(req);
     const body = loginMagicLinkSchema.parse({ ...req.body });
 
-    await this.magicLinkService.login(body);
+    await this.magicLinkService.login({ ...body, ipAddress });
 
     return res.status(HTTPSTATUS.OK).json({
       success: true,

@@ -29,7 +29,8 @@ Since we use cookies for Refresh Tokens and Authentication actions (like Passwor
 - **Mechanism:**
   1.  **Cookie:** The server sets a `csrfToken` cookie (readable by client JS).
   2.  **Header:** For every state-changing request (POST, PUT, DELETE), the client must read this cookie and send its value in the `x-csrf-token` header.
-  3.  **Validation:** The `requireAuthAction` middleware checks if `cookie.csrfToken === header['x-csrf-token']`.
+  3.  **Origin Validation (Production)**: In production environments, the `requireAuthAction` middleware validates the request's `Origin` header against the unified origin policy.
+  4.  **Token Comparison**: The middleware verifies that `cookie.csrfToken === header['x-csrf-token']`.
 - **Workflow:**
   - **Login/MFA:** Upon successful authentication, the server generates a random UUID and sets the `csrfToken` cookie.
   - **Protected Actions:** Endpoints like `/logout`, `/refresh-token`, and `/reset-password` enforce the check.
@@ -59,14 +60,18 @@ While JWTs are stateless, we track **Sessions** in the database to allow for imm
   - **Password Change:** Revokes **all** active sessions for the user.
   - **Suspicious Activity:** Administrators can revoke specific sessions.
 - **Device Fingerprinting:** We capture User-Agent and IP address to generate a device fingerprint. This helps in detecting "New Devices" and notifying the user via email.
+- **Per-Account Lockout**: To prevent credential stuffing and brute-force campaigns, we enforce a per-account lockout policy. If an email address experiences 5 failed login attempts within 15 minutes, it is temporarily locked for 15 minutes. This status is checked immediately at the start of the login request (before looking up the user or running bcrypt) to protect backend database and CPU resources from denial-of-service, and to mitigate username enumeration.
 
 ### 2.2. Rate Limiting
 
 We use **Redis** to implement sliding-window rate limiting.
 
-- **Global Limiter:** Protects the entire API from DDoS attacks (e.g., 100 requests/15min).
-- **Auth Limiter:** Stricter limits on `/auth/*` endpoints (e.g., Login, Register) to prevent Brute Force and Credential Stuffing attacks.
-- **MFA/OTP Limiter:** Very strict limits (e.g., 3-5 attempts) on OTP verification to prevent guessing.
+- **Upstream Gateway Protection**: In production, public traffic routes through an Nginx container. Nginx terminates SSL/TLS and overwrites proxy headers (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`), stripping out client-side header spoofing.
+- **Proxy Trust Configuration**: Express is configured dynamically via the `TRUST_PROXY` environment variable. When set to trust the proxy, Express securely resolves client IPs using native `req.ip`.
+- **Global Limiter:** Protects the entire API from DDoS attacks (e.g., 200 requests/15min).
+- **Auth Limiter:** Stricter limits on `/auth/*` endpoints, magic-link routes, and MFA verify routes via the `authRateLimiter` middleware to prevent brute-force attacks.
+- **MFA/OTP Limiter:** Very strict limits (maximum 5 attempts) on MFA verification. Attempts are tracked in Redis per `userId` globally (`mfa_limit:<userId>`) to prevent brute-force bypasses via IP rotation.
+- **Magic-Link Send Limiter:** Magic link generation requests (`POST /magic-link/login`) enforce the in-service rate limit checker (`rate_limit:MAGIC_LINK:<email>:<ip>`) to prevent mail-bombing and SMTP resource abuse.
 
 ### 2.3. Data Sanitization
 
@@ -92,7 +97,7 @@ Our OIDC Provider implementation adheres to strict security standards to safely 
   - **Strict Cookie Policy:** Interaction session cookies are `HttpOnly`, `Signed`, and `SameSite=Lax`.
   - **Short-Lived Sessions:** Interaction sessions expire quickly (e.g., 15 minutes) to reduce the attack window.
 - **Token Rotation:** Refresh Tokens issued via OIDC are rotated upon use, detecting and preventing token theft and replay.
-- **Context Preservation:** We strictly bind external authentication flows (Google, Magic Link) to the initiating OIDC transaction using the `uid` parameter (via OAuth `state` or Redis). This prevents session injection attacks where a user starts a flow in one context and finishes it in another.
+- **Context Preservation:** We strictly bind external authentication flows (Google, Magic Link) to the initiating OIDC transaction. For Google OAuth, the `state` parameter is a cryptographically secure random `stateId` (UUID) whose payload is cached in Redis (`oauth_state:${stateId}`). Upon callback, the state is validated, immediately deleted (single-use replay protection), and the associated `uid` and `redirectUrl` are processed. This blocks login CSRF and session injection.
 - **MFA Enforcement:** Multi-Factor Authentication is enforced _within_ the OIDC interaction pipeline. If a user has MFA enabled, the OIDC flow halts until a valid TOTP code is provided, preventing bypass via single-factor entry points.
 
 ### 2.5. Session Bridging & Unified Identity
@@ -108,9 +113,17 @@ To provide a seamless Single Sign-On (SSO) experience, we implement a **Session 
 
 To ensure robust cryptographic security, AuthKit includes an automated script (`pnpm generate:secrets`) that securely generates:
 
-1. **JWT & Session Secrets**: Cryptographically secure 256-bit random strings using `node:crypto`.
-2. **OIDC JWKS**: A securely generated RS256 keypair (using `jose`) for signing OIDC tokens.
+1. **JWT & Session Secrets**: Cryptographically secure 256-bit random strings using `node:crypto` (covering auth, refresh, reset, and MFA tokens).
+2. **TOTP Encryption Key (`AUTHENTICATOR_APP_SECRET`)**: A cryptographically secure 256-bit key used to encrypt users' Google Authenticator seeds at rest. The application validates and rejects secrets under 32 bytes of secure entropy at boot.
+3. **OIDC JWKS**: A securely generated RS256 keypair (using `jose`) for signing OIDC tokens.
    By keeping secret generation automated, we reduce the risk of weak, manually chosen passwords or keys being used in production.
+
+### 2.7. Username & Account Enumeration Prevention
+
+To prevent attackers from compiling lists of registered email addresses, AuthKit enforces indistinguishable responses on recovery and verification endpoints:
+
+- **Uniform API Responses**: The forgot-password (`POST /auth/forgot-password`), resend-verification (`POST /auth/resend-verification`), and magic-link (`POST /magic-link/login`) endpoints return a generic success message and identical HTTP status codes regardless of whether the email address is registered or verified in the database.
+- **Pre-Lookup Rate Limiting**: In-service rate limit checks are executed immediately upon receiving requests (prior to database queries or user lookups). This prevents resource exhaustion and timing attacks.
 
 ---
 
@@ -118,8 +131,18 @@ To ensure robust cryptographic security, AuthKit includes an automated script (`
 
 Redis acts as a high-performance "Speed Layer" that facilitates security features without compromising latency.
 
-| Feature              | How Redis is Used                                                                                               | Benefit                                                                                          |
-| :------------------- | :-------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
-| **Session Caching**  | Stores active user sessions (JSON). The JWT Strategy checks Redis _first_ before hitting the DB.                | Drastic reduction in DB load; sub-millisecond authentication checks.                             |
-| **Rate Limiting**    | Stores counters and expiry times for IP addresses.                                                              | Atomic increments prevent race conditions; extremely fast.                                       |
-| **Ephemeral Tokens** | Stores short-lived tokens: <br> - MFA Setup Secrets <br> - Email Verification Tokens <br> - Password Reset OTPs | Automatic expiration (TTL) handles cleanup; data is never persisted to disk (DB) until verified. |
+| Feature              | How Redis is Used                                                                                                                                                     | Benefit                                                                                               |
+| :------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
+| **Session Caching**  | Stores sanitized session and user profiles (excluding credential hashes/TOTP secrets). The JWT Strategy validates session expiry and revocation status on cache hits. | Drastic reduction in DB load; sub-millisecond authentication checks with real-time revocation checks. |
+| **Rate Limiting**    | Stores counters and expiry times for IP addresses.                                                                                                                    | Atomic increments prevent race conditions; extremely fast.                                            |
+| **Login Lockout**    | Tracks per-account failure counters (`failed_attempts:<email>`) and lockout flags (`lockout:<email>`) with a 15-minute sliding TTL.                                   | Neutralizes password brute-forcing across rotating IPs.                                               |
+| **Ephemeral Tokens** | Stores short-lived tokens: <br> - Encrypted MFA Setup Secrets (using AES-256-GCM) <br> - Email Verification Tokens <br> - Password Reset OTPs                         | Automatic expiration (TTL) handles cleanup; data is never persisted to disk (DB) until verified.      |
+
+### 3.1. Redis Security Configuration
+
+To protect transient credentials, rate limit counters, and session metadata cached in Redis:
+
+- **Authentication**: Redis requires a secure password configured via `REDIS_PASSWORD` (loaded dynamically into the `ioredis` client and enforced in the server container via `--requirepass`).
+- **Network Containment**: Redis container ports are not published to the host in development, restricting access to inside the isolated Docker bridge network.
+- **Transport Security (TLS)**: Support for encrypted transport is supported via `REDIS_TLS="true"` settings.
+- **Cache Encryption**: Ephemeral MFA enrollment seeds (`mfa_setup:<userId>`) are encrypted using AES-256-GCM before storage in Redis, preventing plaintext exposures to the internal network.

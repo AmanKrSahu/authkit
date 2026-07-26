@@ -31,6 +31,7 @@ import {
 import {
   checkForNewDevice,
   checkMfaRateLimit,
+  clearMfaRateLimit,
   incrementMfaRateLimit,
 } from '@core/common/utils/metadata';
 import { deleteCache, getCache, setCache } from '@core/common/utils/redis-helpers';
@@ -78,8 +79,8 @@ export class MfaService {
 
       const qrImageUrl = await qrcode.toDataURL(url);
 
-      // Store in Redis with 1 hour expiry
-      await setCache(`mfa_setup:${userId}`, secretKey, ONE_HOUR);
+      // Store in Redis with 1 hour expiry (encrypted)
+      await setCache(`mfa_setup:${userId}`, encrypt(secretKey), ONE_HOUR);
 
       return {
         qrImageUrl,
@@ -106,13 +107,15 @@ export class MfaService {
         throw new BadRequestException('MFA is already enabled');
       }
 
-      const secretKey = await getCache(`mfa_setup:${userId}`);
+      const cachedSecret = await getCache(`mfa_setup:${userId}`);
 
-      if (!secretKey) {
+      if (!cachedSecret) {
         throw new BadRequestException(
           'MFA setup not initiated or expired. Please generate setup first.'
         );
       }
+
+      const secretKey = decrypt(cachedSecret);
 
       const isValid = speakeasy.totp.verify({
         secret: secretKey,
@@ -205,11 +208,7 @@ export class MfaService {
         throw new UnauthorizedException('MFA not enabled for this user');
       }
 
-      const mfaAttempts = await checkMfaRateLimit(
-        user.email,
-        ipAddress,
-        RATE_LIMIT.MFA.MAX_ATTEMPTS
-      );
+      const mfaAttempts = await checkMfaRateLimit(user.id, RATE_LIMIT.MFA.MAX_ATTEMPTS);
 
       let isValid = false;
 
@@ -243,12 +242,14 @@ export class MfaService {
       if (!isValid) {
         const remainingAttempts = RATE_LIMIT.MFA.MAX_ATTEMPTS - (mfaAttempts + 1);
 
-        await incrementMfaRateLimit(user.email, ipAddress);
+        await incrementMfaRateLimit(user.id);
 
         throw new BadRequestException(
           `Invalid MFA code. ${remainingAttempts} attempt(s) remaining.`
         );
       }
+
+      await clearMfaRateLimit(user.id);
 
       const deviceFingerprint = generateDeviceFingerprint(userAgent, ipAddress);
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);

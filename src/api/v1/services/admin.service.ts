@@ -28,12 +28,22 @@ export class AdminService {
         throw new NotFoundException('User not found');
       }
 
+      const activeSessions = await prisma.session.findMany({
+        where: { userId, isRevoked: false },
+        select: { id: true },
+      });
+
       const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
           role: Role.ADMIN,
         },
       });
+
+      // Invalidate active session caches so privilege changes propagate immediately
+      for (const session of activeSessions) {
+        await deleteCache(`session:${session.id}`);
+      }
 
       return sanitizeUser(updatedUser);
     } catch (error) {
