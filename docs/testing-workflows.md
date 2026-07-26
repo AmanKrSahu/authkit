@@ -10,12 +10,14 @@ This document explains how to configure, run, and test AuthKit across different 
 
 ## Environment Variable Reference
 
-To test these environments, ensure you configure these two variables inside your `.env` file correctly:
+To test these environments, ensure you configure these variables inside your `.env` file correctly:
 
 | Variable            | Description                                                                                                                        | Recommended (Local Dev) | Recommended (Production / Nginx) |
 | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------- | :---------------------- | :------------------------------- |
 | `TRUST_PROXY`       | Determines if Express trusts incoming header chains (like `X-Forwarded-For`). Can be `true`, `false`, or a numeric number of hops. | `false`                 | `1` (or `true`)                  |
 | `NGINX_SERVER_NAME` | The hostname Nginx checks for incoming connections (`server_name`). _Not used by backend application code._                        | `localhost`             | `authkit.yourdomain.com`         |
+| `REDIS_PASSWORD`    | The password used by the backend client to authenticate with the Redis server.                                                     | `dev_redis_secure_pass` | `your_secure_prod_password`      |
+| `REDIS_TLS`         | Controls whether transport layer security (TLS) is used for the Redis client connection (`true` / `false`).                        | `false`                 | `true` (if network requires it)  |
 
 ---
 
@@ -85,6 +87,15 @@ NGINX_SERVER_NAME="localhost"
 - Since there is no reverse proxy container intercepting requests, Express reads incoming client socket connections directly.
 - `TRUST_PROXY` must remain `"false"`. If set to `"true"` without an Nginx gateway, an attacker could spoof `X-Forwarded-For` headers directly.
 
+### Accessing Redis & Redis Insight (Loopback Binding)
+
+To inspect Redis data and access the **Redis Insight UI** during development, the ports in `docker-compose.dev.yml` are bound exclusively to the loopback interface (`127.0.0.1`):
+
+- **Redis Server**: Accessible locally at `127.0.0.1:6379`.
+- **Redis Insight UI**: Accessible on your local browser at `http://127.0.0.1:8001` or `http://localhost:8001`.
+- **Authentication**: When connecting, you must supply the password configured in `REDIS_PASSWORD` (e.g. `dev_redis_secure_pass_1234`).
+- **Internal Networking**: The API container and the Redis container communicate internally via the shared bridge network (`authkit_network`) using host alias `redis:6379`. The local loopback port exposure is for developer utility only and does not affect container-to-container traffic.
+
 ---
 
 ## 3. Docker Production Workflow (With Nginx Gateway)
@@ -126,3 +137,11 @@ _Because traffic is routed through Nginx, you must make all requests on port `80
 
 - Nginx intercepts all client calls, strips any client-supplied `X-Forwarded-For` headers, and creates a secure header chain with the true TCP source IP (`X-Real-IP`).
 - Express trusts this single hop (`TRUST_PROXY="1"`) and extracts the client IP safely from `req.ip` without risking IP spoofing.
+
+### Accessing Redis (Isolated Setup)
+
+In the production layout, Redis is fully isolated:
+
+- **No Port Exposures**: The `redis` service maps no ports to the host machine (not even loopback), restricting connection paths to within the internal `authkit_network` bridge.
+- **Internal Only**: The API container resolves and communicates with Redis internally using the credentials configured via `REDIS_PASSWORD`.
+- **Debugging**: If troubleshooting is required on production environments, you can map the ports temporarily or use port-forwarding via SSH (e.g., `ssh -L 6379:redis:6379`).

@@ -48,6 +48,8 @@ services:
     restart: always
     expose:
       - '6379'
+    environment:
+      - REDIS_ARGS=--requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data_prod:/data
     networks:

@@ -1,11 +1,19 @@
 import { logger } from '@core/common/utils/logger';
 import { config } from '@core/config/app.config';
-import Redis from 'ioredis';
+import Redis, { type RedisOptions } from 'ioredis';
 
-const redisConfig = {
+const redisConfig: RedisOptions = {
   host: config.REDIS.HOST,
   port: Number(config.REDIS.PORT),
 };
+
+if (config.REDIS.PASSWORD) {
+  redisConfig.password = config.REDIS.PASSWORD;
+}
+
+if (config.REDIS.TLS === 'true') {
+  redisConfig.tls = {};
+}
 
 const redisClient = new Redis(redisConfig);
 

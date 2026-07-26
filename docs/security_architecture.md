@@ -129,4 +129,13 @@ Redis acts as a high-performance "Speed Layer" that facilitates security feature
 | **Session Caching**  | Stores sanitized session and user profiles (excluding credential hashes/TOTP secrets). The JWT Strategy validates session expiry and revocation status on cache hits. | Drastic reduction in DB load; sub-millisecond authentication checks with real-time revocation checks. |
 | **Rate Limiting**    | Stores counters and expiry times for IP addresses.                                                                                                                    | Atomic increments prevent race conditions; extremely fast.                                            |
 | **Login Lockout**    | Tracks per-account failure counters (`failed_attempts:<email>`) and lockout flags (`lockout:<email>`) with a 15-minute sliding TTL.                                   | Neutralizes password brute-forcing across rotating IPs.                                               |
-| **Ephemeral Tokens** | Stores short-lived tokens: <br> - MFA Setup Secrets <br> - Email Verification Tokens <br> - Password Reset OTPs                                                       | Automatic expiration (TTL) handles cleanup; data is never persisted to disk (DB) until verified.      |
+| **Ephemeral Tokens** | Stores short-lived tokens: <br> - Encrypted MFA Setup Secrets (using AES-256-GCM) <br> - Email Verification Tokens <br> - Password Reset OTPs                         | Automatic expiration (TTL) handles cleanup; data is never persisted to disk (DB) until verified.      |
+
+### 3.1. Redis Security Configuration
+
+To protect transient credentials, rate limit counters, and session metadata cached in Redis:
+
+- **Authentication**: Redis requires a secure password configured via `REDIS_PASSWORD` (loaded dynamically into the `ioredis` client and enforced in the server container via `--requirepass`).
+- **Network Containment**: Redis container ports are not published to the host in development, restricting access to inside the isolated Docker bridge network.
+- **Transport Security (TLS)**: Support for encrypted transport is supported via `REDIS_TLS="true"` settings.
+- **Cache Encryption**: Ephemeral MFA enrollment seeds (`mfa_setup:<userId>`) are encrypted using AES-256-GCM before storage in Redis, preventing plaintext exposures to the internal network.

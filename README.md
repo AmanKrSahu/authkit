@@ -132,6 +132,8 @@ The infrastructure adheres to a **Modular Layered Architecture (MLA)** utilizing
 - **Per-Account Lockout**: Redis-backed account lockout (5 failed attempts within 15 minutes locks the account for 15 minutes) preventing distributed brute-force guess attempts.
 - **Ingress Gateway Isolation**: Routing production traffic through an Nginx proxy container to isolate backend sockets.
 - **Dynamic Proxy Trust**: Custom, environment-validated `TRUST_PROXY` Express configuration.
+- **Enhanced Ingress Rate-Limiting**: Enforces strict route-level rate limiting across login, register, magic-link, and MFA endpoints, plus user-bound attempt budgets to prevent distributed bypasses.
+- **Hardened Caching Layer**: Implements full Redis password authentication, production TLS transport options, loopback port containment, and AES-256-GCM encryption of cached TOTP setup secrets.
 
 👉 Full Documentation: [**Detailed Security Architecture**](./docs/security_architecture.md)
 

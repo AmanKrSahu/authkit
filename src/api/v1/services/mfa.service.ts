@@ -79,8 +79,8 @@ export class MfaService {
 
       const qrImageUrl = await qrcode.toDataURL(url);
 
-      // Store in Redis with 1 hour expiry
-      await setCache(`mfa_setup:${userId}`, secretKey, ONE_HOUR);
+      // Store in Redis with 1 hour expiry (encrypted)
+      await setCache(`mfa_setup:${userId}`, encrypt(secretKey), ONE_HOUR);
 
       return {
         qrImageUrl,
@@ -107,13 +107,15 @@ export class MfaService {
         throw new BadRequestException('MFA is already enabled');
       }
 
-      const secretKey = await getCache(`mfa_setup:${userId}`);
+      const cachedSecret = await getCache(`mfa_setup:${userId}`);
 
-      if (!secretKey) {
+      if (!cachedSecret) {
         throw new BadRequestException(
           'MFA setup not initiated or expired. Please generate setup first.'
         );
       }
+
+      const secretKey = decrypt(cachedSecret);
 
       const isValid = speakeasy.totp.verify({
         secret: secretKey,
