@@ -67,6 +67,34 @@ export const isTokenExpired = (expiresAt: Date): boolean => {
   return new Date() > expiresAt;
 };
 
+export const generateBackupCode = (): string => {
+  const buffer = crypto.randomBytes(10);
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let value = 0;
+  let output = '';
+  for (const byte of buffer) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    output += alphabet[(value << (5 - bits)) & 31];
+  }
+  return `${output.slice(0, 8)}-${output.slice(8, 16)}`;
+};
+
+export const normalizeBackupCode = (code: string): string => {
+  const stripped = code.replaceAll(/[\s-]/g, '').toUpperCase();
+  if (stripped.length === 16) {
+    return `${stripped.slice(0, 8)}-${stripped.slice(8, 16)}`;
+  }
+  return code;
+};
+
 export const generateDeviceFingerprint = (userAgent: string, ipAddress: string): string => {
   const fingerprintData = `${userAgent}-${ipAddress}`;
   return crypto.createHash('sha256').update(fingerprintData).digest('hex');

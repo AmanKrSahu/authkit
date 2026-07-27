@@ -134,6 +134,8 @@ AuthKit enforces strict cryptographic defaults and validation limits across the 
 - **Timing-Safe String Comparisons**: To prevent timing side-channel attacks, sensitive evaluations (such as CSRF double-submit cookies and reset OTPs) are compared in constant time using `crypto.timingSafeEqual` over SHA-256 pre-hashed buffers.
 - **JWT Signature Verification Pinning**: Access, refresh, reset, and MFA token verifications are restricted to pin allowed algorithms explicitly to `HS256`, blocking algorithm-switching exploits.
 - **Silent Truncation Prevention**: All password input validation schemas enforce a maximum length of 72 characters via Zod, aligning with bcrypt's internal truncation limit to prevent payload truncation bypasses.
+- **High-Entropy MFA Backup Codes**: Backup codes issued during enrollment are generated from 80 bits of random entropy (`crypto.randomBytes(10)`) and encoded as 16-character uppercase base32 groups separated by a hyphen (`XXXX-XXXX`) to ensure robustness against offline brute-forcing.
+- **MFA Revocation Verification Gate**: Disabling Multi-Factor Authentication requires re-authenticating with the user's password if they have a local credential account, preventing compromise of active sessions from silently stripping 2FA.
 
 ---
 

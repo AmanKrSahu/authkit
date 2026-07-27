@@ -1,5 +1,3 @@
-import crypto from 'node:crypto';
-
 import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
 import type {
   GenerateMFASetupData,
@@ -17,8 +15,10 @@ import { comparePassword, hashPassword } from '@core/common/utils/bcrypt';
 import {
   decrypt,
   encrypt,
+  generateBackupCode,
   generateDeviceFingerprint,
   generateSessionToken,
+  normalizeBackupCode,
 } from '@core/common/utils/crypto';
 import { calculateExpirationDate, ONE_HOUR } from '@core/common/utils/date-time';
 import type { MFATPayload } from '@core/common/utils/jwt';
@@ -128,7 +128,7 @@ export class MfaService {
         throw new BadRequestException('Invalid MFA code. Please try again.');
       }
 
-      const backupCodes = Array.from({ length: 5 }, () => crypto.randomBytes(4).toString('hex'));
+      const backupCodes = Array.from({ length: 5 }, () => generateBackupCode());
       const hashedBackupCodes = await Promise.all(backupCodes.map(code => hashPassword(code)));
 
       await prisma.user.update({
@@ -156,9 +156,16 @@ export class MfaService {
 
   public async revokeMFA(revokeMFAData: RevokeMFAData) {
     try {
-      const { userId } = revokeMFAData;
+      const { userId, password } = revokeMFAData;
 
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          accounts: {
+            where: { providerId: 'credential' },
+          },
+        },
+      });
 
       if (!user) {
         throw new UnauthorizedException('User not authorized');
@@ -166,6 +173,17 @@ export class MfaService {
 
       if (!user.enable2FA) {
         throw new BadRequestException('MFA is not enabled');
+      }
+
+      const credentialAccount = user.accounts[0];
+      if (credentialAccount?.password) {
+        if (!password) {
+          throw new BadRequestException('Password is required to revoke MFA');
+        }
+        const isValidPassword = await comparePassword(password, credentialAccount.password);
+        if (!isValidPassword) {
+          throw new BadRequestException('Invalid credentials');
+        }
       }
 
       await prisma.user.update({
@@ -228,8 +246,9 @@ export class MfaService {
         // Check backup codes (hashed)
         // We need to compare specific code against all hashed backup codes.
         // Since bcrypt comparison is slow, this is acceptable for 5 codes.
+        const normalizedCode = normalizeBackupCode(code);
         for (const hashedCode of user.backupCodes) {
-          const isMatch = await comparePassword(code, hashedCode);
+          const isMatch = await comparePassword(normalizedCode, hashedCode);
           if (isMatch) {
             isValid = true;
             // Store new backup codes for update later

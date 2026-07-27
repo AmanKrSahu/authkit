@@ -259,10 +259,16 @@ _Note: The email address is no longer supplied in the request body; the identity
 ### 5.4. Revoke MFA
 
 - **Route**: `POST /mfa/revoke`
-- **Description**: Disables MFA for the authenticated user.
+- **Description**: Disables MFA for the authenticated user. For accounts with a password credential, the account password must be provided to complete the revocation.
 - **Security**: Bearer Token
 
-**Request Body**: None
+**Request Body**
+
+```json
+{
+  "password": "yourPassword123"
+}
+```
 
 ---
 
