@@ -25,6 +25,7 @@ import {
   generateRandomToken,
   generateSessionToken,
   isTokenExpired,
+  timingSafeCompare,
 } from '@core/common/utils/crypto';
 import { calculateExpirationDate, ONE_DAY } from '@core/common/utils/date-time';
 import type { RefreshTPayload, ResetTPayload } from '@core/common/utils/jwt';
@@ -437,7 +438,7 @@ export class AuthService {
         throw new BadRequestException('Too many failed attempts. Please request a new OTP.');
       }
 
-      if (storedOtp !== otp) {
+      if (!timingSafeCompare(storedOtp, otp)) {
         const remainingAttempts = RATE_LIMIT.OTP.MAX_VERIFICATION_ATTEMPTS - previousAttempts;
         throw new BadRequestException(`Invalid OTP. ${remainingAttempts} attempt(s) remaining.`);
       }

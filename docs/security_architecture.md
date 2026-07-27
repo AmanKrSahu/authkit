@@ -125,6 +125,16 @@ To prevent attackers from compiling lists of registered email addresses, AuthKit
 - **Uniform API Responses**: The forgot-password (`POST /auth/forgot-password`), resend-verification (`POST /auth/resend-verification`), and magic-link (`POST /magic-link/login`) endpoints return a generic success message and identical HTTP status codes regardless of whether the email address is registered or verified in the database.
 - **Pre-Lookup Rate Limiting**: In-service rate limit checks are executed immediately upon receiving requests (prior to database queries or user lookups). This prevents resource exhaustion and timing attacks.
 
+### 2.8. Cryptographic & Input Hardening
+
+AuthKit enforces strict cryptographic defaults and validation limits across the application:
+
+- **CSPRNG OTP Generation**: One-Time Passwords (OTPs) are generated using a cryptographically secure pseudo-random number generator (`crypto.randomInt`), ensuring unpredictability.
+- **Configurable Hashing Work Factor**: Passwords and backup codes are hashed using bcrypt with a configurable salt rounds parameter (`BCRYPT_SALT_ROUNDS`), defaulting to a secure workload factor of 12.
+- **Timing-Safe String Comparisons**: To prevent timing side-channel attacks, sensitive evaluations (such as CSRF double-submit cookies and reset OTPs) are compared in constant time using `crypto.timingSafeEqual` over SHA-256 pre-hashed buffers.
+- **JWT Signature Verification Pinning**: Access, refresh, reset, and MFA token verifications are restricted to pin allowed algorithms explicitly to `HS256`, blocking algorithm-switching exploits.
+- **Silent Truncation Prevention**: All password input validation schemas enforce a maximum length of 72 characters via Zod, aligning with bcrypt's internal truncation limit to prevent payload truncation bypasses.
+
 ---
 
 ## 3. The Role of Redis

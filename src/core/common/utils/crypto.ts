@@ -50,12 +50,17 @@ export const generateSessionToken = (): string => {
 };
 
 export const generateOTP = (length: number = 6): string => {
-  const digits = '0123456789';
   let otp = '';
   for (let i = 0; i < length; i++) {
-    otp += digits[Math.floor(Math.random() * digits.length)];
+    otp += crypto.randomInt(0, 10).toString();
   }
   return otp;
+};
+
+export const timingSafeCompare = (a: string, b: string): boolean => {
+  const hashA = crypto.createHash('sha256').update(a).digest();
+  const hashB = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
 };
 
 export const isTokenExpired = (expiresAt: Date): boolean => {
