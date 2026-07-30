@@ -216,6 +216,13 @@ export class MfaService {
         throw new UnauthorizedException('Invalid or expired login token');
       }
 
+      const cacheKey = `mfa_login_nonce:${payload.userId}:${payload.nonce}`;
+      const nonceExists = await getCache(cacheKey);
+
+      if (!nonceExists) {
+        throw new UnauthorizedException('MFA login challenge has expired or been replayed');
+      }
+
       const user = await prisma.user.findUnique({ where: { id: payload.userId } });
 
       if (!user) {
@@ -269,6 +276,7 @@ export class MfaService {
       }
 
       await clearMfaRateLimit(user.id);
+      await deleteCache(cacheKey);
 
       const deviceFingerprint = generateDeviceFingerprint(userAgent, ipAddress);
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);

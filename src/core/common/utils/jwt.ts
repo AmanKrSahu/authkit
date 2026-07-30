@@ -20,6 +20,7 @@ export type ResetTPayload = {
 export type MFATPayload = {
   userId: string;
   purpose: 'MFA_LOGIN';
+  nonce: string;
 };
 
 const defaults: SignOptions & VerifyOptions = {

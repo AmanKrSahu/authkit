@@ -247,8 +247,11 @@ export class AuthService {
 
       if (user.enable2FA) {
         const { ...userInfo } = user;
+        const nonce = generateRandomToken();
+        await setCache(`mfa_login_nonce:${user.id}:${nonce}`, 'active', 300);
+
         const mfaLoginToken = signJwtToken(
-          { userId: user.id, purpose: 'MFA_LOGIN' },
+          { userId: user.id, purpose: 'MFA_LOGIN', nonce },
           mfaTokenSignOptions
         );
 

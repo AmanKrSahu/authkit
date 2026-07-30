@@ -245,7 +245,7 @@ _Note: The email address is no longer supplied in the request body; the identity
 ### 5.3. Verify Login (MFA)
 
 - **Route**: `POST /mfa/verify-login`
-- **Description**: Verifies the MFA code during the login flow.
+- **Description**: Verifies the MFA code during the login flow. The intermediate `mfaLoginToken` cookie is single-use and validated against a server-side Redis nonce. Once successfully verified, the token is invalidated immediately to prevent replay attacks.
 - **Security**: MFA login token cookie (Rate-limited via `authRateLimiter` and capped at 5 failed attempts per user ID)
 
 **Request Body**

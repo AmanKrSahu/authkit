@@ -136,6 +136,7 @@ AuthKit enforces strict cryptographic defaults and validation limits across the 
 - **Silent Truncation Prevention**: All password input validation schemas enforce a maximum length of 72 characters via Zod, aligning with bcrypt's internal truncation limit to prevent payload truncation bypasses.
 - **High-Entropy MFA Backup Codes**: Backup codes issued during enrollment are generated from 80 bits of random entropy (`crypto.randomBytes(10)`) and encoded as 16-character uppercase base32 groups separated by a hyphen (`XXXX-XXXX`) to ensure robustness against offline brute-forcing.
 - **MFA Revocation Verification Gate**: Disabling Multi-Factor Authentication requires re-authenticating with the user's password if they have a local credential account, preventing compromise of active sessions from silently stripping 2FA.
+- **Single-Use MFA Login Nonce**: The intermediate MFA login token (issued upon password/magic link verification) is backed by a server-side one-time nonce in Redis (`mfa_login_nonce:${userId}:${nonce}`) that expires in 5 minutes and is deleted immediately upon successful MFA verification, preventing token replay attacks.
 
 ---
 
