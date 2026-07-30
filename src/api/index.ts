@@ -77,7 +77,9 @@ app.use(passport.initialize());
 
 app.use(BASE_PATH, routes);
 
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+if (config.NODE_ENV !== 'production') {
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 app.use(errorHandler);
 

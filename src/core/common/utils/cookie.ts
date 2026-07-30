@@ -27,8 +27,7 @@ type MfaCookiePayloadType = {
 const defaults: CookieOptions = {
   httpOnly: true,
   secure: config.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  domain: config.DOMAIN_URL,
+  sameSite: 'strict' as const,
 };
 
 export const getCsrfTokenCookieOptions = (): CookieOptions => {

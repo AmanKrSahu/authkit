@@ -138,6 +138,13 @@ AuthKit enforces strict cryptographic defaults and validation limits across the 
 - **MFA Revocation Verification Gate**: Disabling Multi-Factor Authentication requires re-authenticating with the user's password if they have a local credential account, preventing compromise of active sessions from silently stripping 2FA.
 - **Single-Use MFA Login Nonce**: The intermediate MFA login token (issued upon password/magic link verification) is backed by a server-side one-time nonce in Redis (`mfa_login_nonce:${userId}:${nonce}`) that expires in 5 minutes and is deleted immediately upon successful MFA verification, preventing token replay attacks.
 
+### 2.9. API Documentation & Error Sanitization
+
+AuthKit enforces strict policies to prevent information disclosure in error responses and interactive API portals:
+
+- **Generic 500 Error Responses**: Catch-all error handlers sanitize HTTP 500 responses to return a generic `{ message: 'Internal Server Error' }` payload, fully stripping stack traces and internal query messages from reaching client outputs. Complete error logs are securely recorded to the backend Winston log writer.
+- **Swagger Documentation Gating**: The interactive Swagger documentation UI mounted at `/docs` is conditionally mounted only during non-production environments (`config.NODE_ENV !== 'production'`), ensuring public-facing deployments do not expose private API paths or input/output schema signatures.
+
 ---
 
 ## 3. The Role of Redis
