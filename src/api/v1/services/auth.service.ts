@@ -23,7 +23,6 @@ import {
   generateDeviceFingerprint,
   generateOTP,
   generateRandomToken,
-  generateSessionToken,
   hashToken,
   isTokenExpired,
   timingSafeCompare,
@@ -262,12 +261,10 @@ export class AuthService {
       const deviceFingerprint = generateDeviceFingerprint(userAgent, ipAddress);
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);
 
-      const sessionToken = generateSessionToken();
       const expiresAt = calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN);
 
       const session = await prisma.session.create({
         data: {
-          token: sessionToken,
           userId: user.id,
           expiresAt: expiresAt,
           ipAddress: ipAddress,

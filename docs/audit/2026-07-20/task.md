@@ -37,20 +37,20 @@ Goal: harden the medium-risk surface, add the safety net (tests, monitoring), an
 
 ### 2A — Remaining security hardening (Medium/Low)
 
-| #    | Task                                                                                                                                                      | Source    | Priority | Complexity | Dependencies | Status          |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- | ---------- | ------------ | --------------- |
-| 2.1  | CSPRNG OTP (`crypto.randomInt`)                                                                                                                           | SEC-M1    | P1       | S          | none         | **Done**        |
-| 2.2  | 80-bit MFA backup codes                                                                                                                                   | SEC-M2    | P1       | S          | none         | **Done**        |
-| 2.3  | Strip `error.message` from 500 responses                                                                                                                  | SEC-M3    | P1       | S          | none         | **Done**        |
-| 2.4  | Redact tokens/OTPs from logs                                                                                                                              | SEC-M4    | P1       | S          | none         | **Done**        |
-| 2.5  | HTML-escape email template interpolation                                                                                                                  | SEC-M5    | P2       | S          | none         | **Done**        |
-| 2.6  | Raise bcrypt cost to 12 (configurable)                                                                                                                    | SEC-M6    | P2       | S          | none         | **Done**        |
-| 2.7  | Constant-time CSRF/OTP compares                                                                                                                           | SEC-M7    | P2       | S          | none         | **Done**        |
-| 2.8  | Single-use, context-bound MFA-login nonce                                                                                                                 | SEC-M8    | P2       | M          | 1.6          | **Done**        |
-| 2.9  | Enforce CSRF origin check in all envs                                                                                                                     | SEC-M9    | P2       | S          | none         | **Done**        |
-| 2.10 | Scope CSP (drop global `unsafe-inline`; nonces for OIDC pages)                                                                                            | SEC-M10   | P2       | M          | none         | **Done**        |
-| 2.11 | Cookie hardening (`domain` scope, `sameSite: strict`, unconditional `secure` in prod)                                                                     | SEC-M11   | P2       | S          | none         | **Done**        |
-| 2.12 | Low-tier cleanup: pin JWT `algorithms`, email-verify gate, MFA re-auth, refresh single-use, gate `/docs`, password max-length, remove dead `sessionToken` | SEC-L1–L8 | P3       | M          | none         | **In Progress** |
+| #    | Task                                                                                                                                                      | Source    | Priority | Complexity | Dependencies | Status   |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- | ---------- | ------------ | -------- |
+| 2.1  | CSPRNG OTP (`crypto.randomInt`)                                                                                                                           | SEC-M1    | P1       | S          | none         | **Done** |
+| 2.2  | 80-bit MFA backup codes                                                                                                                                   | SEC-M2    | P1       | S          | none         | **Done** |
+| 2.3  | Strip `error.message` from 500 responses                                                                                                                  | SEC-M3    | P1       | S          | none         | **Done** |
+| 2.4  | Redact tokens/OTPs from logs                                                                                                                              | SEC-M4    | P1       | S          | none         | **Done** |
+| 2.5  | HTML-escape email template interpolation                                                                                                                  | SEC-M5    | P2       | S          | none         | **Done** |
+| 2.6  | Raise bcrypt cost to 12 (configurable)                                                                                                                    | SEC-M6    | P2       | S          | none         | **Done** |
+| 2.7  | Constant-time CSRF/OTP compares                                                                                                                           | SEC-M7    | P2       | S          | none         | **Done** |
+| 2.8  | Single-use, context-bound MFA-login nonce                                                                                                                 | SEC-M8    | P2       | M          | 1.6          | **Done** |
+| 2.9  | Enforce CSRF origin check in all envs                                                                                                                     | SEC-M9    | P2       | S          | none         | **Done** |
+| 2.10 | Scope CSP (drop global `unsafe-inline`; nonces for OIDC pages)                                                                                            | SEC-M10   | P2       | M          | none         | **Done** |
+| 2.11 | Cookie hardening (`domain` scope, `sameSite: strict`, unconditional `secure` in prod)                                                                     | SEC-M11   | P2       | S          | none         | **Done** |
+| 2.12 | Low-tier cleanup: pin JWT `algorithms`, email-verify gate, MFA re-auth, refresh single-use, gate `/docs`, password max-length, remove dead `sessionToken` | SEC-L1–L8 | P3       | M          | none         | **Done** |
 
 ### 2B — Performance (high-ROI first)
 

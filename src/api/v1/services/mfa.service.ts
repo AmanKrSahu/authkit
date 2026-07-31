@@ -17,7 +17,6 @@ import {
   encrypt,
   generateBackupCode,
   generateDeviceFingerprint,
-  generateSessionToken,
   hashToken,
   normalizeBackupCode,
 } from '@core/common/utils/crypto';
@@ -281,7 +280,6 @@ export class MfaService {
       const deviceFingerprint = generateDeviceFingerprint(userAgent, ipAddress);
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);
 
-      const sessionToken = generateSessionToken();
       const expiresAt = calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN);
 
       const session = await prisma.$transaction(async tx => {
@@ -296,7 +294,6 @@ export class MfaService {
 
         return await tx.session.create({
           data: {
-            token: sessionToken,
             userId: user.id,
             expiresAt: expiresAt,
             ipAddress: ipAddress,
