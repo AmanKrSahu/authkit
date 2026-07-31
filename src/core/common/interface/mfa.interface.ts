@@ -9,6 +9,7 @@ export interface VerifyMFASetupData {
 
 export interface RevokeMFAData {
   userId: string;
+  password?: string;
 }
 
 export interface VerifyMFAForLoginData {

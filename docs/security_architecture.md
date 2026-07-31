@@ -21,6 +21,7 @@ We implement a dual-token system (Access Token + Refresh Token) to balance secur
   - **Transmission:** Automatically sent by the browser to the `/refresh-token` endpoint.
   - **Lifespan:** Long (e.g., 7 days).
   - **Security Benefit:** `HttpOnly` prevents client-side JavaScript from reading the token, making it immune to XSS theft.
+  - **Refresh Token Rotation (RTR):** Refresh tokens are strictly single-use. The SHA-256 hash of the active refresh token is cached in Redis (`active_refresh_token:${sessionId}`). Every token refresh attempt validates the incoming token's hash against the cache, rotates the refresh token, and updates the cache. If a token reuse/replay attempt is detected, the entire session is immediately revoked in the database and caches to prevent session hijacking. All session revocation paths (logout, password change/reset, administrative revocation) completely delete the RTR active token key from Redis.
 
 ### 1.2. CSRF Protection (Double-Submit Cookie Pattern)
 
@@ -29,7 +30,7 @@ Since we use cookies for Refresh Tokens and Authentication actions (like Passwor
 - **Mechanism:**
   1.  **Cookie:** The server sets a `csrfToken` cookie (readable by client JS).
   2.  **Header:** For every state-changing request (POST, PUT, DELETE), the client must read this cookie and send its value in the `x-csrf-token` header.
-  3.  **Origin Validation (Production)**: In production environments, the `requireAuthAction` middleware validates the request's `Origin` header against the unified origin policy.
+  3.  **Origin Validation**: The `requireAuthAction` middleware validates the request's `Origin` header against the unified origin policy across all environments.
   4.  **Token Comparison**: The middleware verifies that `cookie.csrfToken === header['x-csrf-token']`.
 - **Workflow:**
   - **Login/MFA:** Upon successful authentication, the server generates a random UUID and sets the `csrfToken` cookie.
@@ -41,8 +42,8 @@ Since we use cookies for Refresh Tokens and Authentication actions (like Passwor
 - **Cookies:**
   - `HttpOnly`: true (for Refresh, MFA, Reset tokens) - Blocks JS access.
   - `Secure`: true (in Production) - HTTPS only.
-  - `SameSite`: 'Lax' - Prevents CSRF on cross-site subrequests.
-  - `Domain`: Restricted to the specific API domain.
+  - `SameSite`: 'Strict' - Restricts cookie transmission exclusively to first-party/same-site requests, mitigating cross-site leaks.
+  - `Domain`: Omitted to default to the issuing host, preventing wildcard parent/subdomain exposure.
 - **Headers:**
   - `Cache-Control: no-store`: Applied to all sensitive endpoints (Login, MFA, Refresh) to prevent browsers or proxies from caching sensitive JSON responses (which might contain Access Tokens).
 
@@ -86,7 +87,32 @@ To prevent **Data Leakage**, we strictly sanitize objects before returning them 
   - `sessions`
 - **Benefit:** Ensures that even if a developer accidentally returns a full User object, the sensitive data is stripped out before it reaches the client.
 
-### 2.4. OpenID Connect (OIDC) Security
+### 2.4. Input Sanitization & HTML Escaping
+
+To prevent HTML Injection and Cross-Site Scripting (XSS) via dynamic email templates:
+
+- **HTML Escaping**: All user-controlled fields (e.g. `name`, `deviceInfo`, `ipAddress`) interpolated into email templates are processed through the `escapeHtml` utility using `.replaceAll()`. This converts dangerous HTML characters (`&`, `<`, `>`, `"`, `'`) to their safe HTML entity representations before rendering the templates (**SEC-M5**).
+
+### 2.5. Sensitive Log Redaction
+
+To prevent exposure of transient credentials or authentication links in application log logs:
+
+- **Redaction Gate**: Plaintext tokens (e.g., email verification tokens, magic link tokens, password reset OTPs) and complete authentication URLs are completely redacted in logging statements. Log outputs contain generic `[REDACTED]` labels, preventing storage of active credentials in log files or production log aggregators (**SEC-M4**).
+
+### 2.6. Email-Verification Login Gate
+
+To protect application boundaries and ensure users confirm email ownership before accessing sensitive platform functions:
+
+- **Verification Gate**: Standard credential logins throw a `BadRequestException` (`AUTH_ACCOUNT_PENDING_VERIFICATION`) if the user's account has not verified its email address.
+- **Implicit Verification**: Authentication actions that require inbox verification (such as logging in via magic link) implicitly set the account's `emailVerified` status to `true` (**SEC-L2**).
+
+### 2.7. Google OAuth Auto-Linking Gate
+
+To prevent pre-account-takeover attacks where an attacker pre-registers a victim's email address:
+
+- **Linking Verification Gate**: Auto-linking of a Google OAuth identity to an existing local credential account is restricted to verified local credential accounts. If the matching local account is unverified (`emailVerified: false`), Google OAuth login throws a `BadRequestException` (`AUTH_ACCOUNT_PENDING_VERIFICATION`), requiring the user to verify the local account first before the accounts can be safely merged (**SEC-L5**).
+
+### 2.8. OpenID Connect (OIDC) Security
 
 Our OIDC Provider implementation adheres to strict security standards to safely act as an Identity Provider.
 
@@ -100,7 +126,7 @@ Our OIDC Provider implementation adheres to strict security standards to safely 
 - **Context Preservation:** We strictly bind external authentication flows (Google, Magic Link) to the initiating OIDC transaction. For Google OAuth, the `state` parameter is a cryptographically secure random `stateId` (UUID) whose payload is cached in Redis (`oauth_state:${stateId}`). Upon callback, the state is validated, immediately deleted (single-use replay protection), and the associated `uid` and `redirectUrl` are processed. This blocks login CSRF and session injection.
 - **MFA Enforcement:** Multi-Factor Authentication is enforced _within_ the OIDC interaction pipeline. If a user has MFA enabled, the OIDC flow halts until a valid TOTP code is provided, preventing bypass via single-factor entry points.
 
-### 2.5. Session Bridging & Unified Identity
+### 2.9. Session Bridging & Unified Identity
 
 To provide a seamless Single Sign-On (SSO) experience, we implement a **Session Bridge** between our Direct API authentication and OIDC flows.
 
@@ -109,7 +135,7 @@ To provide a seamless Single Sign-On (SSO) experience, we implement a **Session 
 - **Safety:** This validation is **read-only** and does not rotate the token, ensuring the original session remains undisturbed while establishing a new OIDC session.
 - **Result:** Users authenticated on the main platform are automatically authenticated for any OIDC client without re-entering credentials.
 
-### 2.6. Secure Secret & Key Generation
+### 2.10. Secure Secret & Key Generation
 
 To ensure robust cryptographic security, AuthKit includes an automated script (`pnpm generate:secrets`) that securely generates:
 
@@ -118,12 +144,32 @@ To ensure robust cryptographic security, AuthKit includes an automated script (`
 3. **OIDC JWKS**: A securely generated RS256 keypair (using `jose`) for signing OIDC tokens.
    By keeping secret generation automated, we reduce the risk of weak, manually chosen passwords or keys being used in production.
 
-### 2.7. Username & Account Enumeration Prevention
+### 2.11. Username & Account Enumeration Prevention
 
 To prevent attackers from compiling lists of registered email addresses, AuthKit enforces indistinguishable responses on recovery and verification endpoints:
 
 - **Uniform API Responses**: The forgot-password (`POST /auth/forgot-password`), resend-verification (`POST /auth/resend-verification`), and magic-link (`POST /magic-link/login`) endpoints return a generic success message and identical HTTP status codes regardless of whether the email address is registered or verified in the database.
 - **Pre-Lookup Rate Limiting**: In-service rate limit checks are executed immediately upon receiving requests (prior to database queries or user lookups). This prevents resource exhaustion and timing attacks.
+
+### 2.12. Cryptographic & Input Hardening
+
+AuthKit enforces strict cryptographic defaults and validation limits across the application:
+
+- **CSPRNG OTP Generation**: One-Time Passwords (OTPs) are generated using a cryptographically secure pseudo-random number generator (`crypto.randomInt`), ensuring unpredictability.
+- **Configurable Hashing Work Factor**: Passwords and backup codes are hashed using bcrypt with a configurable salt rounds parameter (`BCRYPT_SALT_ROUNDS`), defaulting to a secure workload factor of 12.
+- **Timing-Safe String Comparisons**: To prevent timing side-channel attacks, sensitive evaluations (such as CSRF double-submit cookies and reset OTPs) are compared in constant time using `crypto.timingSafeEqual` over SHA-256 pre-hashed buffers.
+- **JWT Signature Verification Pinning**: Access, refresh, reset, and MFA token verifications are restricted to pin allowed algorithms explicitly to `HS256`, blocking algorithm-switching exploits.
+- **Silent Truncation Prevention**: All password input validation schemas enforce a maximum length of 72 characters via Zod, aligning with bcrypt's internal truncation limit to prevent payload truncation bypasses.
+- **High-Entropy MFA Backup Codes**: Backup codes issued during enrollment are generated from 80 bits of random entropy (`crypto.randomBytes(10)`) and encoded as 16-character uppercase base32 groups separated by a hyphen (`XXXX-XXXX`) to ensure robustness against offline brute-forcing.
+- **MFA Revocation Verification Gate**: Disabling Multi-Factor Authentication requires re-authenticating with the user's password if they have a local credential account, preventing compromise of active sessions from silently stripping 2FA.
+- **Single-Use MFA Login Nonce**: The intermediate MFA login token (issued upon password/magic link verification) is backed by a server-side one-time nonce in Redis (`mfa_login_nonce:${userId}:${nonce}`) that expires in 5 minutes and is deleted immediately upon successful MFA verification, preventing token replay attacks.
+
+### 2.13. API Documentation & Error Sanitization
+
+AuthKit enforces strict policies to prevent information disclosure in error responses and interactive API portals:
+
+- **Generic 500 Error Responses**: Catch-all error handlers sanitize HTTP 500 responses to return a generic `{ message: 'Internal Server Error' }` payload, fully stripping stack traces and internal query messages from reaching client outputs. Complete error logs are securely recorded to the backend Winston log writer.
+- **Swagger Documentation Gating**: The interactive Swagger documentation UI mounted at `/docs` is conditionally mounted only during non-production environments (`config.NODE_ENV !== 'production'`), ensuring public-facing deployments do not expose private API paths or input/output schema signatures.
 
 ---
 

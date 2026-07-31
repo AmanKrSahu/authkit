@@ -20,6 +20,7 @@ export type ResetTPayload = {
 export type MFATPayload = {
   userId: string;
   purpose: 'MFA_LOGIN';
+  nonce: string;
 };
 
 const defaults: SignOptions & VerifyOptions = {
@@ -69,6 +70,7 @@ export const verifyJwtToken = <TPayload extends object = AccessTPayload>(
     const { secret = config.JWT.SECRET, ...opts } = options ?? {};
     const payload = jwt.verify(token, secret, {
       ...defaults,
+      algorithms: ['HS256'],
       ...opts,
     }) as unknown as TPayload;
     return { payload };

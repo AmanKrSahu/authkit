@@ -7,16 +7,14 @@ import { AppError, BadRequestException, NotFoundException } from '@core/common/u
 import {
   generateDeviceFingerprint,
   generateRandomToken,
-  generateSessionToken,
+  hashToken,
 } from '@core/common/utils/crypto';
 import { calculateExpirationDate, FIFTEEN_MINUTES } from '@core/common/utils/date-time';
 import { mfaTokenSignOptions, refreshTokenSignOptions, signJwtToken } from '@core/common/utils/jwt';
-import { logger } from '@core/common/utils/logger';
 import { checkForNewDevice, checkRateLimit } from '@core/common/utils/metadata';
 import { deleteCache, getCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
-import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import type { EmailService } from '@core/mailers/resend';
@@ -56,12 +54,7 @@ export class MagicLinkService {
       const baseUrl = getValidRedirectUrl(redirectUrl);
       const magicLinkUrl = `${baseUrl}/auth/magic-link/verify?token=${token}`;
 
-      if (config.NODE_ENV === 'production') {
-        await this.emailService.sendMagicLink(email, magicLinkUrl, user.name);
-      } else {
-        logger.info(`Magic Link Token: ${token}`);
-        logger.info(`Magic Link URL: ${magicLinkUrl}`);
-      }
+      await this.emailService.sendMagicLink(email, magicLinkUrl, user.name);
 
       return null;
     } catch (error) {
@@ -101,10 +94,22 @@ export class MagicLinkService {
         throw new NotFoundException('User not found');
       }
 
+      // Implicitly verify email address upon successful magic link login
+      if (!user.emailVerified) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: true },
+        });
+        user.emailVerified = true;
+      }
+
       if (user.enable2FA) {
         const { ...userInfo } = user;
+        const nonce = generateRandomToken();
+        await setCache(`mfa_login_nonce:${user.id}:${nonce}`, 'active', 300);
+
         const mfaLoginToken = signJwtToken(
-          { userId: user.id, purpose: 'MFA_LOGIN' },
+          { userId: user.id, purpose: 'MFA_LOGIN', nonce },
           mfaTokenSignOptions
         );
 
@@ -122,12 +127,10 @@ export class MagicLinkService {
       const deviceFingerprint = generateDeviceFingerprint(userAgent, ipAddress);
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);
 
-      const sessionToken = generateSessionToken();
       const expiresAt = calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN);
 
       const session = await prisma.session.create({
         data: {
-          token: sessionToken,
           userId: user.id,
           expiresAt: expiresAt,
           ipAddress: ipAddress,
@@ -137,7 +140,7 @@ export class MagicLinkService {
         },
       });
 
-      if (isNewDevice && config.NODE_ENV === 'production') {
+      if (isNewDevice) {
         await this.emailService.sendNewDeviceNotification(
           email,
           {
@@ -151,6 +154,14 @@ export class MagicLinkService {
 
       const accessToken = signJwtToken({ userId: user.id, sessionId: session.id });
       const refreshToken = signJwtToken({ sessionId: session.id }, refreshTokenSignOptions);
+
+      // Store refresh token hash in Redis for RTR
+      const refreshTokenHash = hashToken(refreshToken);
+      await setCache(
+        `active_refresh_token:${session.id}`,
+        refreshTokenHash,
+        JWT_CONFIG.REFRESH_EXPIRES_IN
+      );
 
       await deleteCache(`magic_link:${token}`);
 

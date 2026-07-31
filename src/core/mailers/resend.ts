@@ -1,5 +1,9 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
 import { formatDate } from '@core/common/utils/date-time';
 import { logger } from '@core/common/utils/logger';
+import { escapeHtml } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { config } from '@core/config/app.config';
 import { Resend } from 'resend';
@@ -27,6 +31,19 @@ export class EmailService {
   }
 
   private async sendEmail({ to, subject, html, from }: EmailTemplate) {
+    if (config.NODE_ENV !== 'production') {
+      try {
+        const dir = path.join(process.cwd(), 'tmp');
+        await fs.mkdir(dir, { recursive: true });
+        const filename = `${to}-${subject.replaceAll(/\s+/g, '_').toLowerCase()}.html`;
+        await fs.writeFile(path.join(dir, filename), html);
+        logger.info(`[Dev Email] Saved verification/notification email to: tmp/${filename}`);
+      } catch (error) {
+        logger.error('Failed to save dev email to file:', error);
+      }
+      return { id: 'dev-mock-id' };
+    }
+
     try {
       const result = await resend.emails.send({
         from: from ?? this.fromEmail,
@@ -61,7 +78,7 @@ export class EmailService {
             
             <div style="background-color: #f8fafc; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
               <p style="font-size: 16px; margin-bottom: 20px;">
-                ${name ? `Hi ${name},` : 'Hi there,'}
+                ${name ? `Hi ${escapeHtml(name)},` : 'Hi there,'}
               </p>
               
               <p style="font-size: 16px; margin-bottom: 20px;">
@@ -69,7 +86,7 @@ export class EmailService {
               </p>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${verificationUrl}" 
+                <a href="${escapeHtml(verificationUrl)}" 
                    style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
                   Verify Email Address
                 </a>
@@ -78,8 +95,8 @@ export class EmailService {
               <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
                 If you can't click the button, copy and paste this link into your browser:
                 <br>
-                <a href="${verificationUrl}" style="color: #2563eb; word-break: break-all;">
-                  ${verificationUrl}
+                <a href="${escapeHtml(verificationUrl)}" style="color: #2563eb; word-break: break-all;">
+                  ${escapeHtml(verificationUrl)}
                 </a>
               </p>
             </div>
@@ -115,7 +132,7 @@ export class EmailService {
             
             <div style="background-color: #fef2f2; padding: 30px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #dc2626;">
               <p style="font-size: 16px; margin-bottom: 20px;">
-                ${name ? `Hi ${name},` : 'Hi there,'}
+                ${name ? `Hi ${escapeHtml(name)},` : 'Hi there,'}
               </p>
               
               <p style="font-size: 16px; margin-bottom: 20px;">
@@ -124,7 +141,7 @@ export class EmailService {
               
               <div style="text-align: center; margin: 30px 0;">
                 <div style="display: inline-block; background-color: #dc2626; color: white; padding: 15px 40px; border-radius: 8px; font-size: 32px; font-weight: 600; letter-spacing: 8px;">
-                  ${otp}
+                  ${escapeHtml(otp)}
                 </div>
               </div>
               
@@ -163,7 +180,7 @@ export class EmailService {
             
             <div style="background-color: #f0fdf4; padding: 30px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #059669;">
               <p style="font-size: 16px; margin-bottom: 20px;">
-                ${name ? `Hi ${name},` : 'Hi there,'}
+                ${name ? `Hi ${escapeHtml(name)},` : 'Hi there,'}
               </p>
               
               <p style="font-size: 16px; margin-bottom: 20px;">
@@ -205,7 +222,7 @@ export class EmailService {
             
             <div style="background-color: #f8fafc; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
               <p style="font-size: 16px; margin-bottom: 20px;">
-                ${name ? `Hi ${name},` : 'Hi there,'}
+                ${name ? `Hi ${escapeHtml(name)},` : 'Hi there,'}
               </p>
               
               <p style="font-size: 16px; margin-bottom: 20px;">
@@ -248,7 +265,7 @@ export class EmailService {
             
             <div style="background-color: #fffbeb; padding: 30px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #f59e0b;">
               <p style="font-size: 16px; margin-bottom: 20px;">
-                ${name ? `Hi ${name},` : 'Hi there,'}
+                ${name ? `Hi ${escapeHtml(name)},` : 'Hi there,'}
               </p>
               
               <p style="font-size: 16px; margin-bottom: 20px;">
@@ -259,15 +276,15 @@ export class EmailService {
                 <table style="width: 100%; border-collapse: collapse;">
                   <tr>
                     <td style="padding: 8px 0; font-weight: 600; color: #374151; width: 30%;">Date & Time:</td>
-                    <td style="padding: 8px 0; color: #6b7280;">${formatDate(deviceInfo.loginTime)}</td>
+                    <td style="padding: 8px 0; color: #6b7280;">${escapeHtml(formatDate(deviceInfo.loginTime))}</td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0; font-weight: 600; color: #374151;">Device:</td>
-                    <td style="padding: 8px 0; color: #6b7280;">${deviceInfo.deviceInfo}</td>
+                    <td style="padding: 8px 0; color: #6b7280;">${escapeHtml(deviceInfo.deviceInfo)}</td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0; font-weight: 600; color: #374151;">IP Address:</td>
-                    <td style="padding: 8px 0; color: #6b7280;">${deviceInfo.ipAddress}</td>
+                    <td style="padding: 8px 0; color: #6b7280;">${escapeHtml(deviceInfo.ipAddress)}</td>
                   </tr>
                 </table>
               </div>
@@ -285,11 +302,11 @@ export class EmailService {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${getValidRedirectUrl()}/account/security" 
+                <a href="${escapeHtml(getValidRedirectUrl())}/account/security" 
                    style="display: inline-block; background-color: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-right: 10px;">
                   Review Security Settings
                 </a>
-                <a href="${getValidRedirectUrl()}/account/sessions" 
+                <a href="${escapeHtml(getValidRedirectUrl())}/account/sessions" 
                    style="display: inline-block; background-color: #6b7280; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
                   Manage Sessions
                 </a>
@@ -327,7 +344,7 @@ export class EmailService {
             
             <div style="background-color: #f5f3ff; padding: 30px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #7c3aed;">
               <p style="font-size: 16px; margin-bottom: 20px;">
-                ${name ? `Hi ${name},` : 'Hi there,'}
+                ${name ? `Hi ${escapeHtml(name)},` : 'Hi there,'}
               </p>
               
               <p style="font-size: 16px; margin-bottom: 20px;">
@@ -335,7 +352,7 @@ export class EmailService {
               </p>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${url}" 
+                <a href="${escapeHtml(url)}" 
                    style="display: inline-block; background-color: #7c3aed; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
                   Sign In Now
                 </a>
@@ -344,8 +361,8 @@ export class EmailService {
               <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
                 If you can't click the button, copy and paste this link into your browser:
                 <br>
-                <a href="${url}" style="color: #7c3aed; word-break: break-all;">
-                  ${url}
+                <a href="${escapeHtml(url)}" style="color: #7c3aed; word-break: break-all;">
+                  ${escapeHtml(url)}
                 </a>
               </p>
 

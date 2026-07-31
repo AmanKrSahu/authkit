@@ -1,6 +1,7 @@
 import { authenticateJWT } from '@core/common/strategies/jwt.strategy';
 import { Role } from '@prisma/client';
 import { Router } from 'express';
+import helmet from 'helmet';
 
 import { oidcRateLimiter } from '../middlewares/rate-limiter.middleware';
 import { roleGuard } from '../middlewares/role.middleware';
@@ -18,6 +19,19 @@ import userRoutes from './user.routes';
 const router = Router();
 
 router.use('/', healthRoutes);
+
+// OIDC-specific Content Security Policy (allows inline scripts/styles for OIDC redirect forms)
+const oidcHelmet = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'script-src': ["'self'", "'unsafe-inline'"],
+      'style-src': ["'self'", "'unsafe-inline'"],
+    },
+  },
+});
+
+router.use('/oidc', oidcHelmet);
 
 // 1. Custom UI Routes FIRST (Interactions, Login Page)
 router.use('/oidc', oidcRateLimiter, oidcRoutes);

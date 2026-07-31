@@ -6,6 +6,7 @@ const appConfig = () => ({
   BASE_PATH: getEnvironment('BASE_PATH', '/api/v1'),
   DOMAIN_URL: getEnvironment('DOMAIN_URL', 'localhost'),
   TRUST_PROXY: getEnvironment('TRUST_PROXY', 'false'),
+  BCRYPT_SALT_ROUNDS: Number(getEnvironment('BCRYPT_SALT_ROUNDS', '12')),
 
   FRONTEND_ORIGINS: getEnvironment('FRONTEND_ORIGINS', 'http://localhost:3000').split(','),
 
