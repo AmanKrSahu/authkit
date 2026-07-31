@@ -127,26 +127,21 @@ export class SessionService {
     try {
       const { userId, sessionId } = revokeSessionByIdData;
 
-      const session = await prisma.session.findFirst({
+      // Update target session directly and check count to avoid pre-fetch query
+      const result = await prisma.session.updateMany({
         where: {
           id: sessionId,
           userId: userId,
-        },
-      });
-
-      if (!session) {
-        throw new NotFoundException('Session not found');
-      }
-
-      await prisma.session.update({
-        where: {
-          id: sessionId,
         },
         data: {
           isRevoked: true,
           revokedAt: new Date(),
         },
       });
+
+      if (result.count === 0) {
+        throw new NotFoundException('Session not found');
+      }
 
       await deleteCache(`session:${sessionId}`);
       await deleteCache(`active_refresh_token:${sessionId}`);

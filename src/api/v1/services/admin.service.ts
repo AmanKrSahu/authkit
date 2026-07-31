@@ -15,23 +15,12 @@ import { deleteCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 export class AdminService {
   public async promoteUserToAdmin(promoteUserToAdminData: PromoteUserToAdminData) {
     try {
       const { userId } = promoteUserToAdminData;
-
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
-      const activeSessions = await prisma.session.findMany({
-        where: { userId, isRevoked: false },
-        select: { id: true },
-      });
 
       const updatedUser = await prisma.user.update({
         where: { id: userId },
@@ -40,13 +29,22 @@ export class AdminService {
         },
       });
 
+      const activeSessions = await prisma.session.findMany({
+        where: { userId, isRevoked: false },
+        select: { id: true },
+      });
+
       // Invalidate active session caches so privilege changes propagate immediately
       for (const session of activeSessions) {
         await deleteCache(`session:${session.id}`);
+        await deleteCache(`active_refresh_token:${session.id}`);
       }
 
       return sanitizeUser(updatedUser);
     } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        throw new NotFoundException('User not found');
+      }
       if (error instanceof AppError) {
         throw error;
       }
@@ -58,18 +56,26 @@ export class AdminService {
     try {
       const { userId } = deleteUserData;
 
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      // Fetch active sessions to clear cache before cascade delete
+      const sessions = await prisma.session.findMany({
+        where: { userId, isRevoked: false },
+        select: { id: true },
+      });
 
-      if (!user) {
+      // Cascade delete user in database and verify match count
+      const result = await prisma.user.deleteMany({
+        where: { id: userId },
+      });
+
+      if (result.count === 0) {
         throw new NotFoundException('User not found');
       }
 
-      // Revoke sessions first to clear cache
-      await this.revokeSessionsByUserId({ userId });
-
-      await prisma.user.delete({
-        where: { id: userId },
-      });
+      // Invalidate Redis caches
+      for (const session of sessions) {
+        await deleteCache(`session:${session.id}`);
+        await deleteCache(`active_refresh_token:${session.id}`);
+      }
 
       return null;
     } catch (error) {
@@ -84,15 +90,8 @@ export class AdminService {
     try {
       const { sessionId } = revokeSessionByIdData;
 
-      const session = await prisma.session.findUnique({
-        where: { id: sessionId },
-      });
-
-      if (!session) {
-        throw new NotFoundException('Session not found');
-      }
-
-      await prisma.session.update({
+      // Update database directly and check count
+      const result = await prisma.session.updateMany({
         where: { id: sessionId },
         data: {
           isRevoked: true,
@@ -100,7 +99,12 @@ export class AdminService {
         },
       });
 
+      if (result.count === 0) {
+        throw new NotFoundException('Session not found');
+      }
+
       await deleteCache(`session:${sessionId}`);
+      await deleteCache(`active_refresh_token:${sessionId}`);
 
       return null;
     } catch (error) {

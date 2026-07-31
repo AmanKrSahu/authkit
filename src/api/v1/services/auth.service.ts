@@ -49,6 +49,7 @@ import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import type { EmailService } from '@core/mailers/resend';
+import { Prisma } from '@prisma/client';
 
 import { RATE_LIMIT } from '../../../core/common/constants/rate-limit.constant';
 
@@ -74,6 +75,9 @@ export class AuthService {
         );
       }
 
+      // Compute bcrypt hash outside database transaction to keep connections/locks free
+      const hashedPassword = await hashPassword(password);
+
       const newUser = await prisma.$transaction(async tx => {
         const newUser = await tx.user.create({
           data: {
@@ -82,8 +86,6 @@ export class AuthService {
             emailVerified: false,
           },
         });
-
-        const hashedPassword = await hashPassword(password);
 
         await tx.account.create({
           data: {
@@ -105,8 +107,11 @@ export class AuthService {
       const baseUrl = getValidRedirectUrl(redirectUrl);
       const verificationUrl = `${baseUrl}/auth/verify-email?token=${verificationToken}`;
 
-      await this.emailService.sendEmailVerification(email, verificationUrl, name);
-      await this.emailService.sendWelcomeEmail(email, name);
+      // Dispatch verification and welcome emails concurrently
+      await Promise.all([
+        this.emailService.sendEmailVerification(email, verificationUrl, name),
+        this.emailService.sendWelcomeEmail(email, name),
+      ]);
 
       return {
         user: sanitizeUser(newUser),
@@ -495,40 +500,41 @@ export class AuthService {
 
       const email = payload.email;
 
-      const user = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (!user) {
-        throw new UnauthorizedException('Invalid reset token');
-      }
-
       const hashedPassword = await hashPassword(password);
 
-      // Fetch active sessions to invalidate cache
-      const activeSessions = await prisma.session.findMany({
-        where: { userId: user.id, isRevoked: false },
-        select: { id: true },
-      });
-
-      await prisma.$transaction(async tx => {
-        await tx.account.updateMany({
-          where: {
-            user: { email },
-            providerId: 'credential',
-          },
+      // Execute password write, session revocation, and fetch profile atomically
+      const updatedUser = await prisma.$transaction(async tx => {
+        const u = await tx.user.update({
+          where: { email },
           data: {
-            password: hashedPassword,
+            accounts: {
+              updateMany: {
+                where: { providerId: 'credential' },
+                data: { password: hashedPassword },
+              },
+            },
+          },
+          select: {
+            id: true,
+            name: true,
           },
         });
 
         await tx.session.updateMany({
-          where: { userId: user.id },
+          where: { userId: u.id },
           data: {
             isRevoked: true,
             revokedAt: new Date(),
           },
         });
+
+        return u;
+      });
+
+      // Fetch active sessions to invalidate cache
+      const activeSessions = await prisma.session.findMany({
+        where: { userId: updatedUser.id, isRevoked: false },
+        select: { id: true },
       });
 
       // Invalidate Redis keys
@@ -537,10 +543,13 @@ export class AuthService {
         await deleteCache(`active_refresh_token:${session.id}`);
       }
 
-      await this.emailService.sendPasswordChangeConfirmation(email, user.name);
+      await this.emailService.sendPasswordChangeConfirmation(email, updatedUser.name);
 
       return null;
     } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        throw new UnauthorizedException('Invalid reset token');
+      }
       if (error instanceof AppError) {
         throw error;
       }
