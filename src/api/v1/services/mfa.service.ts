@@ -18,6 +18,7 @@ import {
   generateBackupCode,
   generateDeviceFingerprint,
   generateSessionToken,
+  hashToken,
   normalizeBackupCode,
 } from '@core/common/utils/crypto';
 import { calculateExpirationDate, ONE_HOUR } from '@core/common/utils/date-time';
@@ -36,7 +37,6 @@ import {
 } from '@core/common/utils/metadata';
 import { deleteCache, getCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
-import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import { EmailService } from '@core/mailers/resend';
@@ -307,7 +307,7 @@ export class MfaService {
         });
       });
 
-      if (isNewDevice && config.NODE_ENV === 'production') {
+      if (isNewDevice) {
         await this.emailService.sendNewDeviceNotification(
           user.email,
           {
@@ -321,6 +321,14 @@ export class MfaService {
 
       const accessToken = signJwtToken({ userId: user.id, sessionId: session.id });
       const refreshToken = signJwtToken({ sessionId: session.id }, refreshTokenSignOptions);
+
+      // Store refresh token hash in Redis for RTR
+      const refreshTokenHash = hashToken(refreshToken);
+      await setCache(
+        `active_refresh_token:${session.id}`,
+        refreshTokenHash,
+        JWT_CONFIG.REFRESH_EXPIRES_IN
+      );
 
       const { ...userInfo } = user;
 

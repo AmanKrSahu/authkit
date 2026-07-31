@@ -49,6 +49,10 @@ export const generateSessionToken = (): string => {
   return crypto.randomBytes(64).toString('hex');
 };
 
+export const hashToken = (token: string): string => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
+
 export const generateOTP = (length: number = 6): string => {
   let otp = '';
   for (let i = 0; i < length; i++) {

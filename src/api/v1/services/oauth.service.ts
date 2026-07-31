@@ -1,12 +1,17 @@
 import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
+import { ErrorCodeEnum } from '@core/common/enums/error-code.enum';
 import type { LoginWithGoogleData } from '@core/common/interface/oauth.interface';
 import { AppError, BadRequestException } from '@core/common/utils/app-error';
-import { generateDeviceFingerprint, generateSessionToken } from '@core/common/utils/crypto';
+import {
+  generateDeviceFingerprint,
+  generateSessionToken,
+  hashToken,
+} from '@core/common/utils/crypto';
 import { calculateExpirationDate } from '@core/common/utils/date-time';
 import { refreshTokenSignOptions, signJwtToken } from '@core/common/utils/jwt';
 import { checkForNewDevice } from '@core/common/utils/metadata';
+import { setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
-import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import type { EmailService } from '@core/mailers/resend';
@@ -47,6 +52,14 @@ export class OAuthService {
         );
 
         if (!googleAccount) {
+          // Prevent pre-account-takeovers: do not auto-link if the existing local account is not verified
+          if (!user.emailVerified) {
+            throw new BadRequestException(
+              'An account with this email address already exists. Please verify that account first or link it from your account settings.',
+              ErrorCodeEnum.AUTH_ACCOUNT_PENDING_VERIFICATION
+            );
+          }
+
           // Link google account
           await prisma.account.create({
             data: {
@@ -103,7 +116,7 @@ export class OAuthService {
         },
       });
 
-      if (isNewDevice && config.NODE_ENV === 'production') {
+      if (isNewDevice) {
         await this.emailService.sendNewDeviceNotification(
           result.user.email,
           {
@@ -117,6 +130,14 @@ export class OAuthService {
 
       const accessToken = signJwtToken({ userId: result.user.id, sessionId: session.id });
       const refreshToken = signJwtToken({ sessionId: session.id }, refreshTokenSignOptions);
+
+      // Store refresh token hash in Redis for RTR
+      const refreshTokenHash = hashToken(refreshToken);
+      await setCache(
+        `active_refresh_token:${session.id}`,
+        refreshTokenHash,
+        JWT_CONFIG.REFRESH_EXPIRES_IN
+      );
 
       const { ...userInfo } = result.user;
 

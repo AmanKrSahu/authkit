@@ -24,6 +24,7 @@ import {
   generateOTP,
   generateRandomToken,
   generateSessionToken,
+  hashToken,
   isTokenExpired,
   timingSafeCompare,
 } from '@core/common/utils/crypto';
@@ -36,7 +37,6 @@ import {
   signJwtToken,
   verifyJwtToken,
 } from '@core/common/utils/jwt';
-import { logger } from '@core/common/utils/logger';
 import {
   checkForNewDevice,
   checkLoginLockout,
@@ -47,7 +47,6 @@ import {
 import { deleteCache, getCache, incrementCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
-import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import type { EmailService } from '@core/mailers/resend';
@@ -107,15 +106,8 @@ export class AuthService {
       const baseUrl = getValidRedirectUrl(redirectUrl);
       const verificationUrl = `${baseUrl}/auth/verify-email?token=${verificationToken}`;
 
-      if (config.NODE_ENV === 'production') {
-        await this.emailService.sendEmailVerification(email, verificationUrl, name);
-      } else {
-        logger.info(`Verification Token: ${verificationToken}`);
-      }
-
-      if (config.NODE_ENV === 'production') {
-        await this.emailService.sendWelcomeEmail(email, name);
-      }
+      await this.emailService.sendEmailVerification(email, verificationUrl, name);
+      await this.emailService.sendWelcomeEmail(email, name);
 
       return {
         user: sanitizeUser(newUser),
@@ -186,11 +178,7 @@ export class AuthService {
       const baseUrl = getValidRedirectUrl(redirectUrl);
       const verificationUrl = `${baseUrl}/auth/verify-email?token=${verificationToken}`;
 
-      if (config.NODE_ENV === 'production') {
-        await this.emailService.sendEmailVerification(email, verificationUrl, user.name);
-      } else {
-        logger.info(`Verification Token: ${verificationToken}`);
-      }
+      await this.emailService.sendEmailVerification(email, verificationUrl, user.name);
 
       return null;
     } catch (error) {
@@ -242,6 +230,13 @@ export class AuthService {
         );
       }
 
+      if (!user.emailVerified) {
+        throw new BadRequestException(
+          'Please verify your email address before logging in.',
+          ErrorCodeEnum.AUTH_ACCOUNT_PENDING_VERIFICATION
+        );
+      }
+
       // Clear lockout counters upon successful login
       await clearLoginLockout(email);
 
@@ -282,7 +277,7 @@ export class AuthService {
         },
       });
 
-      if (isNewDevice && config.NODE_ENV === 'production') {
+      if (isNewDevice) {
         await this.emailService.sendNewDeviceNotification(
           email,
           {
@@ -296,6 +291,14 @@ export class AuthService {
 
       const accessToken = signJwtToken({ userId: user.id, sessionId: session.id });
       const refreshToken = signJwtToken({ sessionId: session.id }, refreshTokenSignOptions);
+
+      // Store refresh token hash in Redis
+      const refreshTokenHash = hashToken(refreshToken);
+      await setCache(
+        `active_refresh_token:${session.id}`,
+        refreshTokenHash,
+        JWT_CONFIG.REFRESH_EXPIRES_IN
+      );
 
       const { ...userInfo } = user;
 
@@ -327,6 +330,7 @@ export class AuthService {
 
       // Invalidate cache
       await deleteCache(`session:${sessionId}`);
+      await deleteCache(`active_refresh_token:${sessionId}`);
 
       return null;
     } catch (error) {
@@ -358,12 +362,35 @@ export class AuthService {
         throw new UnauthorizedException('Session expired or invalid');
       }
 
+      // Check for token reuse / replay attacks
+      const incomingHash = hashToken(refreshToken);
+      const cachedHash = await getCache(`active_refresh_token:${session.id}`);
+
+      if (cachedHash && cachedHash !== incomingHash) {
+        // Reuse detected! Immediately revoke the session
+        await prisma.session.update({
+          where: { id: session.id },
+          data: { isRevoked: true, revokedAt: new Date() },
+        });
+        await deleteCache(`session:${session.id}`);
+        await deleteCache(`active_refresh_token:${session.id}`);
+        throw new UnauthorizedException('Refresh token reuse detected. Session revoked.');
+      }
+
       const newAccessToken = signJwtToken({
         userId: session.userId,
         sessionId: session.id,
       });
 
       const newRefreshToken = signJwtToken({ sessionId: session.id }, refreshTokenSignOptions);
+
+      // Store new refresh token hash in Redis
+      const newRefreshTokenHash = hashToken(newRefreshToken);
+      await setCache(
+        `active_refresh_token:${session.id}`,
+        newRefreshTokenHash,
+        JWT_CONFIG.REFRESH_EXPIRES_IN
+      );
 
       await prisma.session.update({
         where: { id: session.id },
@@ -405,11 +432,7 @@ export class AuthService {
       // Store OTP in Redis with expiry: key="password_reset:<email>"
       await setCache(`password_reset:${email}`, otp, RATE_LIMIT.OTP.EXPIRY_MS / 1000);
 
-      if (config.NODE_ENV === 'production') {
-        await this.emailService.sendPasswordResetOTP(email, otp, user.name);
-      } else {
-        logger.info(`Password Reset OTP: ${otp}`);
-      }
+      await this.emailService.sendPasswordResetOTP(email, otp, user.name);
 
       return null;
     } catch (error) {
@@ -514,11 +537,10 @@ export class AuthService {
       // Invalidate Redis keys
       for (const session of activeSessions) {
         await deleteCache(`session:${session.id}`);
+        await deleteCache(`active_refresh_token:${session.id}`);
       }
 
-      if (config.NODE_ENV === 'production') {
-        await this.emailService.sendPasswordChangeConfirmation(email, user.name);
-      }
+      await this.emailService.sendPasswordChangeConfirmation(email, user.name);
 
       return null;
     } catch (error) {
@@ -597,11 +619,10 @@ export class AuthService {
       // Invalidate Redis keys
       for (const session of activeSessions) {
         await deleteCache(`session:${session.id}`);
+        await deleteCache(`active_refresh_token:${session.id}`);
       }
 
-      if (config.NODE_ENV === 'production') {
-        await this.emailService.sendPasswordChangeConfirmation(user.email, user.name);
-      }
+      await this.emailService.sendPasswordChangeConfirmation(user.email, user.name);
 
       return null;
     } catch (error) {

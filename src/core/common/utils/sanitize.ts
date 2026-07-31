@@ -7,3 +7,13 @@ export const sanitizeUser = (
   const { password, twoFactorSecret, backupCodes, accounts, sessions, ...sanitizedUser } = user;
   return sanitizedUser;
 };
+
+export const escapeHtml = (unsafe: string): string => {
+  if (typeof unsafe !== 'string') return '';
+  return unsafe
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+};

@@ -5,7 +5,7 @@ import type {
   SessionData,
 } from '@core/common/interface/session.interface';
 import { AppError, NotFoundException } from '@core/common/utils/app-error';
-import { isTokenExpired } from '@core/common/utils/crypto';
+import { hashToken, isTokenExpired } from '@core/common/utils/crypto';
 import type { RefreshTPayload } from '@core/common/utils/jwt';
 import { refreshTokenSignOptions, verifyJwtToken } from '@core/common/utils/jwt';
 import { deleteCache, getCache } from '@core/common/utils/redis-helpers';
@@ -128,6 +128,7 @@ export class SessionService {
       // Invalidate Redis keys
       for (const session of sessionsToRevoke) {
         await deleteCache(`session:${session.id}`);
+        await deleteCache(`active_refresh_token:${session.id}`);
       }
 
       return null;
@@ -165,6 +166,7 @@ export class SessionService {
       });
 
       await deleteCache(`session:${sessionId}`);
+      await deleteCache(`active_refresh_token:${sessionId}`);
 
       return null;
     } catch (error) {
@@ -192,6 +194,21 @@ export class SessionService {
 
       if (!session || session.isRevoked || isTokenExpired(session.expiresAt)) {
         return null; // Session invalid or expired
+      }
+
+      // Check for token reuse / replay attacks
+      const incomingHash = hashToken(refreshToken);
+      const cachedHash = await getCache(`active_refresh_token:${session.id}`);
+
+      if (cachedHash && cachedHash !== incomingHash) {
+        // Reuse detected! Immediately revoke the session
+        await prisma.session.update({
+          where: { id: session.id },
+          data: { isRevoked: true, revokedAt: new Date() },
+        });
+        await deleteCache(`session:${session.id}`);
+        await deleteCache(`active_refresh_token:${session.id}`);
+        return null;
       }
 
       const { ...userInfo } = session.user;
