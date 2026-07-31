@@ -36,8 +36,8 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        'script-src': ["'self'", "'unsafe-inline'"], // Required for OIDC form_post and interactions
-        'style-src': ["'self'", "'unsafe-inline'"], // Required for simple interaction styling
+        'script-src': ["'self'"],
+        'style-src': ["'self'"],
       },
     },
   })
@@ -78,7 +78,20 @@ app.use(passport.initialize());
 app.use(BASE_PATH, routes);
 
 if (config.NODE_ENV !== 'production') {
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use(
+    '/docs',
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          'script-src': ["'self'", "'unsafe-inline'"],
+          'style-src': ["'self'", "'unsafe-inline'"],
+        },
+      },
+    }),
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec)
+  );
 }
 
 app.use(errorHandler);

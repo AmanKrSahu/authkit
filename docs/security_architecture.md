@@ -29,7 +29,7 @@ Since we use cookies for Refresh Tokens and Authentication actions (like Passwor
 - **Mechanism:**
   1.  **Cookie:** The server sets a `csrfToken` cookie (readable by client JS).
   2.  **Header:** For every state-changing request (POST, PUT, DELETE), the client must read this cookie and send its value in the `x-csrf-token` header.
-  3.  **Origin Validation (Production)**: In production environments, the `requireAuthAction` middleware validates the request's `Origin` header against the unified origin policy.
+  3.  **Origin Validation**: The `requireAuthAction` middleware validates the request's `Origin` header against the unified origin policy across all environments.
   4.  **Token Comparison**: The middleware verifies that `cookie.csrfToken === header['x-csrf-token']`.
 - **Workflow:**
   - **Login/MFA:** Upon successful authentication, the server generates a random UUID and sets the `csrfToken` cookie.
@@ -41,8 +41,8 @@ Since we use cookies for Refresh Tokens and Authentication actions (like Passwor
 - **Cookies:**
   - `HttpOnly`: true (for Refresh, MFA, Reset tokens) - Blocks JS access.
   - `Secure`: true (in Production) - HTTPS only.
-  - `SameSite`: 'Lax' - Prevents CSRF on cross-site subrequests.
-  - `Domain`: Restricted to the specific API domain.
+  - `SameSite`: 'Strict' - Restricts cookie transmission exclusively to first-party/same-site requests, mitigating cross-site leaks.
+  - `Domain`: Omitted to default to the issuing host, preventing wildcard parent/subdomain exposure.
 - **Headers:**
   - `Cache-Control: no-store`: Applied to all sensitive endpoints (Login, MFA, Refresh) to prevent browsers or proxies from caching sensitive JSON responses (which might contain Access Tokens).
 
