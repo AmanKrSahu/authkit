@@ -46,30 +46,12 @@ export class SessionService {
         throw new AppError('Invalid session ID', HTTPSTATUS.BAD_REQUEST);
       }
 
-      // 1. Try Redis
-      const cachedSessionStr = await getCache(`session:${sessionId}`);
-      if (cachedSessionStr) {
-        const session = JSON.parse(cachedSessionStr);
-        // Verify user owns this session (security check)
-        if (session?.userId === userId) {
-          const isExpired = new Date(session.expiresAt).getTime() < Date.now();
-          if (!session.isRevoked && !isExpired) {
-            // Destructure to return session properties matching DB fallback schema
-            const { user: _user, ...sessionWithoutUser } = session;
-            return sessionWithoutUser;
-          }
-        }
-      }
-
-      // 2. Fallback to DB
-      const session = await prisma.session.findFirst({
-        where: {
-          id: sessionId,
-          userId: userId,
-        },
+      // Query DB directly (on primary key id, extremely fast and indexed)
+      const session = await prisma.session.findUnique({
+        where: { id: sessionId },
       });
 
-      if (!session) {
+      if (session?.userId !== userId) {
         throw new NotFoundException('Session not found');
       }
 
@@ -81,8 +63,9 @@ export class SessionService {
             revokedAt: new Date(),
           },
         });
-        // Invalidate just in case
+        // Invalidate hot-path JWT token cache and active RTR token hash cache
         await deleteCache(`session:${sessionId}`);
+        await deleteCache(`active_refresh_token:${sessionId}`);
         throw new AppError('Session expired', HTTPSTATUS.UNAUTHORIZED);
       }
 

@@ -67,12 +67,19 @@ export const setupJwtStrategy = (passport: PassportStatic) => {
 
         req.sessionId = payload.sessionId;
 
-        // 3. Cache the result (Session object with sanitized user)
+        // 3. Cache the result (Sanitized minimal session object to save Redis memory)
         const remainingTimeMs = new Date(session.expiresAt).getTime() - Date.now();
         const ttlSeconds = Math.max(Math.floor(remainingTimeMs / 1000), 0);
         const cacheTtl = Math.min(ttlSeconds, ONE_DAY);
 
-        await setCache(`session:${payload.sessionId}`, JSON.stringify(session), cacheTtl);
+        const minimizedSession = {
+          userId: session.userId,
+          expiresAt: session.expiresAt,
+          isRevoked: session.isRevoked,
+          user: session.user,
+        };
+
+        await setCache(`session:${payload.sessionId}`, JSON.stringify(minimizedSession), cacheTtl);
 
         return done(null, session.user);
       } catch (error) {
