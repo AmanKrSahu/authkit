@@ -1,5 +1,3 @@
-import crypto from 'node:crypto';
-
 import { JWT_CONFIG } from '@core/common/constants/jwt.constant';
 import type {
   GenerateMFASetupData,
@@ -17,8 +15,10 @@ import { comparePassword, hashPassword } from '@core/common/utils/bcrypt';
 import {
   decrypt,
   encrypt,
+  generateBackupCode,
   generateDeviceFingerprint,
-  generateSessionToken,
+  hashToken,
+  normalizeBackupCode,
 } from '@core/common/utils/crypto';
 import { calculateExpirationDate, ONE_HOUR } from '@core/common/utils/date-time';
 import type { MFATPayload } from '@core/common/utils/jwt';
@@ -36,7 +36,6 @@ import {
 } from '@core/common/utils/metadata';
 import { deleteCache, getCache, setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
-import { config } from '@core/config/app.config';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import { EmailService } from '@core/mailers/resend';
@@ -128,7 +127,7 @@ export class MfaService {
         throw new BadRequestException('Invalid MFA code. Please try again.');
       }
 
-      const backupCodes = Array.from({ length: 5 }, () => crypto.randomBytes(4).toString('hex'));
+      const backupCodes = Array.from({ length: 5 }, () => generateBackupCode());
       const hashedBackupCodes = await Promise.all(backupCodes.map(code => hashPassword(code)));
 
       await prisma.user.update({
@@ -156,9 +155,16 @@ export class MfaService {
 
   public async revokeMFA(revokeMFAData: RevokeMFAData) {
     try {
-      const { userId } = revokeMFAData;
+      const { userId, password } = revokeMFAData;
 
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          accounts: {
+            where: { providerId: 'credential' },
+          },
+        },
+      });
 
       if (!user) {
         throw new UnauthorizedException('User not authorized');
@@ -166,6 +172,17 @@ export class MfaService {
 
       if (!user.enable2FA) {
         throw new BadRequestException('MFA is not enabled');
+      }
+
+      const credentialAccount = user.accounts[0];
+      if (credentialAccount?.password) {
+        if (!password) {
+          throw new BadRequestException('Password is required to revoke MFA');
+        }
+        const isValidPassword = await comparePassword(password, credentialAccount.password);
+        if (!isValidPassword) {
+          throw new BadRequestException('Invalid credentials');
+        }
       }
 
       await prisma.user.update({
@@ -198,6 +215,13 @@ export class MfaService {
         throw new UnauthorizedException('Invalid or expired login token');
       }
 
+      const cacheKey = `mfa_login_nonce:${payload.userId}:${payload.nonce}`;
+      const nonceExists = await getCache(cacheKey);
+
+      if (!nonceExists) {
+        throw new UnauthorizedException('MFA login challenge has expired or been replayed');
+      }
+
       const user = await prisma.user.findUnique({ where: { id: payload.userId } });
 
       if (!user) {
@@ -228,8 +252,9 @@ export class MfaService {
         // Check backup codes (hashed)
         // We need to compare specific code against all hashed backup codes.
         // Since bcrypt comparison is slow, this is acceptable for 5 codes.
+        const normalizedCode = normalizeBackupCode(code);
         for (const hashedCode of user.backupCodes) {
-          const isMatch = await comparePassword(code, hashedCode);
+          const isMatch = await comparePassword(normalizedCode, hashedCode);
           if (isMatch) {
             isValid = true;
             // Store new backup codes for update later
@@ -250,11 +275,11 @@ export class MfaService {
       }
 
       await clearMfaRateLimit(user.id);
+      await deleteCache(cacheKey);
 
       const deviceFingerprint = generateDeviceFingerprint(userAgent, ipAddress);
       const isNewDevice = await checkForNewDevice(user.id, deviceFingerprint);
 
-      const sessionToken = generateSessionToken();
       const expiresAt = calculateExpirationDate(JWT_CONFIG.REFRESH_EXPIRES_IN);
 
       const session = await prisma.$transaction(async tx => {
@@ -269,7 +294,6 @@ export class MfaService {
 
         return await tx.session.create({
           data: {
-            token: sessionToken,
             userId: user.id,
             expiresAt: expiresAt,
             ipAddress: ipAddress,
@@ -280,7 +304,7 @@ export class MfaService {
         });
       });
 
-      if (isNewDevice && config.NODE_ENV === 'production') {
+      if (isNewDevice) {
         await this.emailService.sendNewDeviceNotification(
           user.email,
           {
@@ -294,6 +318,14 @@ export class MfaService {
 
       const accessToken = signJwtToken({ userId: user.id, sessionId: session.id });
       const refreshToken = signJwtToken({ sessionId: session.id }, refreshTokenSignOptions);
+
+      // Store refresh token hash in Redis for RTR
+      const refreshTokenHash = hashToken(refreshToken);
+      await setCache(
+        `active_refresh_token:${session.id}`,
+        refreshTokenHash,
+        JWT_CONFIG.REFRESH_EXPIRES_IN
+      );
 
       const { ...userInfo } = user;
 

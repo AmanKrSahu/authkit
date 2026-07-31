@@ -40,6 +40,5 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, _nex
 
   return response.status(HTTPSTATUS.INTERNAL_SERVER_ERROR).json({
     message: 'Internal Server Error',
-    error: error?.message ?? 'Unknow error occurred',
   });
 };

@@ -5,7 +5,11 @@ import {
   setCsrfCookie,
 } from '@core/common/utils/cookie';
 import { getClientIP, getUserAgent } from '@core/common/utils/metadata';
-import { verifyMfaForLoginSchema, verifyMfaSchema } from '@core/common/validators/mfa.validator';
+import {
+  revokeMfaSchema,
+  verifyMfaForLoginSchema,
+  verifyMfaSchema,
+} from '@core/common/validators/mfa.validator';
 import { HTTPSTATUS } from '@core/config/http.config';
 import { AsyncHandler } from '@core/decorator/async-handler.decorator';
 import { User } from '@prisma/client';
@@ -56,8 +60,9 @@ export class MfaController {
   @AsyncHandler
   public revokeMFA = async (req: Request, res: Response) => {
     const userId = (req.user as User).id;
+    const { password } = revokeMfaSchema.parse({ ...req.body });
 
-    await this.mfaService.revokeMFA({ userId });
+    await this.mfaService.revokeMFA({ userId, password });
 
     return res.status(HTTPSTATUS.OK).json({
       success: true,

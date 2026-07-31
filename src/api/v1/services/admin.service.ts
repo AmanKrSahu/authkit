@@ -244,13 +244,7 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
       });
 
-      // Ensure we don't return raw inner token to admins unnecessarily
-      const sanitizedSessions = sessions.map(session => ({
-        ...session,
-        token: undefined,
-      }));
-
-      return sanitizedSessions;
+      return sessions;
     } catch (error) {
       if (error instanceof AppError) {
         throw error;

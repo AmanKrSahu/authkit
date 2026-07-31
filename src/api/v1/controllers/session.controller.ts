@@ -27,7 +27,6 @@ export class SessionController {
     const modifiedSessions = sessions.map(session => ({
       ...session,
       isCurrent: session.id === currentSessionId,
-      token: undefined,
     }));
 
     return res.status(HTTPSTATUS.OK).json({
@@ -58,7 +57,6 @@ export class SessionController {
       data: {
         session: {
           ...session,
-          token: undefined,
           isCurrent: session.id === req.sessionId,
         },
       },
