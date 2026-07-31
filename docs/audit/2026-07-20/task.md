@@ -56,7 +56,7 @@ Goal: harden the medium-risk surface, add the safety net (tests, monitoring), an
 
 | #    | Task                                                                                           | Source           | Priority | Complexity | Expected Impact                                        | Status   |
 | ---- | ---------------------------------------------------------------------------------------------- | ---------------- | -------- | ---------- | ------------------------------------------------------ | -------- |
-| 2.13 | **Add `Session` indexes** (`userId`, `userId+deviceFingerprint`, `userId+isRevoked+expiresAt`) | perf QW-1/QW-2   | P1       | S          | 10–100× faster session lookups; removes login seq-scan | Todo     |
+| 2.13 | **Add `Session` indexes** (`userId`, `userId+deviceFingerprint`, `userId+isRevoked+expiresAt`) | perf QW-1/QW-2   | P1       | S          | 10–100× faster session lookups; removes login seq-scan | **Done** |
 | 2.14 | **JWT strategy: fetch single session by PK** (combine with 1.6)                                | perf QW-3        | P1       | M          | Constant-size hottest-path query & cache               | **Done** |
 | 2.15 | Move bcrypt out of the register transaction                                                    | perf QW-5        | P2       | S          | ~100ms less connection hold per register               | Todo     |
 | 2.16 | Batch Redis session deletions (`deleteCacheMany`)                                              | perf QW-6        | P2       | S          | M round-trips → 1 on revoke-all                        | Todo     |

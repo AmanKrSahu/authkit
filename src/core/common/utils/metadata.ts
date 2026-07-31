@@ -99,6 +99,9 @@ export const checkForNewDevice = async (
       userId,
       deviceFingerprint,
     },
+    select: {
+      id: true,
+    },
   });
 
   return !existingSession;
