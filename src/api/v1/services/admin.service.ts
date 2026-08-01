@@ -11,7 +11,7 @@ import type {
 } from '@core/common/interface/admin.interface';
 import { AppError, NotFoundException } from '@core/common/utils/app-error';
 import { hashPassword } from '@core/common/utils/bcrypt';
-import { deleteCache } from '@core/common/utils/redis-helpers';
+import { deleteCache, deleteCacheMany } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
@@ -34,11 +34,12 @@ export class AdminService {
         select: { id: true },
       });
 
-      // Invalidate active session caches so privilege changes propagate immediately
-      for (const session of activeSessions) {
-        await deleteCache(`session:${session.id}`);
-        await deleteCache(`active_refresh_token:${session.id}`);
-      }
+      // Invalidate active session caches in a single round-trip
+      const cacheKeys = activeSessions.flatMap(session => [
+        `session:${session.id}`,
+        `active_refresh_token:${session.id}`,
+      ]);
+      await deleteCacheMany(cacheKeys);
 
       return sanitizeUser(updatedUser);
     } catch (error) {
@@ -71,11 +72,12 @@ export class AdminService {
         throw new NotFoundException('User not found');
       }
 
-      // Invalidate Redis caches
-      for (const session of sessions) {
-        await deleteCache(`session:${session.id}`);
-        await deleteCache(`active_refresh_token:${session.id}`);
-      }
+      // Invalidate Redis caches in a single round-trip
+      const cacheKeys = sessions.flatMap(session => [
+        `session:${session.id}`,
+        `active_refresh_token:${session.id}`,
+      ]);
+      await deleteCacheMany(cacheKeys);
 
       return null;
     } catch (error) {
@@ -142,9 +144,12 @@ export class AdminService {
         },
       });
 
-      for (const session of sessions) {
-        await deleteCache(`session:${session.id}`);
-      }
+      // Invalidate all user sessions and their rotation tokens in a single command
+      const cacheKeys = sessions.flatMap(session => [
+        `session:${session.id}`,
+        `active_refresh_token:${session.id}`,
+      ]);
+      await deleteCacheMany(cacheKeys);
 
       return null;
     } catch (error) {

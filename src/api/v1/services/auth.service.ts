@@ -43,7 +43,13 @@ import {
   clearLoginLockout,
   incrementLoginFailedAttempts,
 } from '@core/common/utils/metadata';
-import { deleteCache, getCache, incrementCache, setCache } from '@core/common/utils/redis-helpers';
+import {
+  deleteCache,
+  deleteCacheMany,
+  getCache,
+  incrementCache,
+  setCache,
+} from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { HTTPSTATUS } from '@core/config/http.config';
@@ -537,11 +543,12 @@ export class AuthService {
         select: { id: true },
       });
 
-      // Invalidate Redis keys
-      for (const session of activeSessions) {
-        await deleteCache(`session:${session.id}`);
-        await deleteCache(`active_refresh_token:${session.id}`);
-      }
+      // Invalidate Redis keys in a single round-trip
+      const cacheKeys = activeSessions.flatMap(session => [
+        `session:${session.id}`,
+        `active_refresh_token:${session.id}`,
+      ]);
+      await deleteCacheMany(cacheKeys);
 
       await this.emailService.sendPasswordChangeConfirmation(email, updatedUser.name);
 
@@ -622,11 +629,12 @@ export class AuthService {
         });
       });
 
-      // Invalidate Redis keys
-      for (const session of activeSessions) {
-        await deleteCache(`session:${session.id}`);
-        await deleteCache(`active_refresh_token:${session.id}`);
-      }
+      // Invalidate Redis keys in a single round-trip
+      const cacheKeys = activeSessions.flatMap(session => [
+        `session:${session.id}`,
+        `active_refresh_token:${session.id}`,
+      ]);
+      await deleteCacheMany(cacheKeys);
 
       await this.emailService.sendPasswordChangeConfirmation(user.email, user.name);
 

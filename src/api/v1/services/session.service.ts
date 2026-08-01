@@ -8,7 +8,7 @@ import { AppError, NotFoundException } from '@core/common/utils/app-error';
 import { hashToken, isTokenExpired } from '@core/common/utils/crypto';
 import type { RefreshTPayload } from '@core/common/utils/jwt';
 import { refreshTokenSignOptions, verifyJwtToken } from '@core/common/utils/jwt';
-import { deleteCache, getCache } from '@core/common/utils/redis-helpers';
+import { deleteCache, deleteCacheMany, getCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
@@ -108,11 +108,12 @@ export class SessionService {
         },
       });
 
-      // Invalidate Redis keys
-      for (const session of sessionsToRevoke) {
-        await deleteCache(`session:${session.id}`);
-        await deleteCache(`active_refresh_token:${session.id}`);
-      }
+      // Invalidate Redis keys in a single command
+      const cacheKeys = sessionsToRevoke.flatMap(session => [
+        `session:${session.id}`,
+        `active_refresh_token:${session.id}`,
+      ]);
+      await deleteCacheMany(cacheKeys);
 
       return null;
     } catch (error) {
