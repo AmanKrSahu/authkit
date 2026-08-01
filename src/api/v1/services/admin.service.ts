@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import type {
   CreateOidcClientData,
   DeleteUserData,
+  GetAllUsersData,
   GetUserByIdData,
   GetUserSessionsData,
   PromoteUserToAdminData,
@@ -11,6 +12,7 @@ import type {
 } from '@core/common/interface/admin.interface';
 import { AppError, NotFoundException } from '@core/common/utils/app-error';
 import { hashPassword } from '@core/common/utils/bcrypt';
+import { paginateWithCursor } from '@core/common/utils/pagination';
 import { deleteCache, deleteCacheMany } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
@@ -160,9 +162,9 @@ export class AdminService {
     }
   }
 
-  public async createOidcClient(data: CreateOidcClientData) {
+  public async createOidcClient(createOidcClientData: CreateOidcClientData) {
     try {
-      const { clientName, redirectUrls, grantTypes, scope } = data;
+      const { clientName, redirectUrls, grantTypes, scope } = createOidcClientData;
 
       const clientId = crypto.randomBytes(32).toString('hex');
       const clientSecret = crypto.randomBytes(32).toString('hex');
@@ -196,13 +198,24 @@ export class AdminService {
     }
   }
 
-  public async getAllUsers() {
+  public async getAllUsers(getAllUsersData: GetAllUsersData) {
     try {
-      const users = await prisma.user.findMany({
-        orderBy: { createdAt: 'desc' },
-      });
+      const { cursor, limit } = getAllUsersData;
 
-      return users.map(user => sanitizeUser(user));
+      const result = await paginateWithCursor(
+        args =>
+          prisma.user.findMany({
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            ...args,
+          }),
+        () => prisma.user.count(),
+        { cursor, limit }
+      );
+
+      return {
+        users: result.data.map(user => sanitizeUser(user)),
+        pagination: result.pagination,
+      };
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -212,9 +225,9 @@ export class AdminService {
     }
   }
 
-  public async getUserById(data: GetUserByIdData) {
+  public async getUserById(getUserByIdData: GetUserByIdData) {
     try {
-      const { userId } = data;
+      const { userId } = getUserByIdData;
       const user = await prisma.user.findUnique({
         where: { id: userId },
       });
@@ -233,27 +246,45 @@ export class AdminService {
     }
   }
 
-  public async getUserSessions(data: GetUserSessionsData) {
+  public async getUserSessions(getUserSessionsData: GetUserSessionsData) {
     try {
-      const { userId } = data;
+      const { userId, cursor, limit } = getUserSessionsData;
 
       const user = await prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
         throw new NotFoundException('User not found');
       }
 
-      const sessions = await prisma.session.findMany({
-        where: {
-          userId,
-          isRevoked: false,
-          expiresAt: {
-            gt: new Date(),
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      const result = await paginateWithCursor(
+        args =>
+          prisma.session.findMany({
+            where: {
+              userId,
+              isRevoked: false,
+              expiresAt: {
+                gt: new Date(),
+              },
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            ...args,
+          }),
+        () =>
+          prisma.session.count({
+            where: {
+              userId,
+              isRevoked: false,
+              expiresAt: {
+                gt: new Date(),
+              },
+            },
+          }),
+        { cursor, limit }
+      );
 
-      return sessions;
+      return {
+        sessions: result.data,
+        pagination: result.pagination,
+      };
     } catch (error) {
       if (error instanceof AppError) {
         throw error;

@@ -135,6 +135,7 @@ The infrastructure adheres to a **Modular Layered Architecture (MLA)** utilizing
 - **Dynamic Proxy Trust**: Custom, environment-validated `TRUST_PROXY` Express configuration.
 - **Enhanced Ingress Rate-Limiting**: Enforces strict route-level rate limiting across login, register, magic-link, and MFA endpoints, plus user-bound attempt budgets to prevent distributed bypasses.
 - **Hardened Caching Layer**: Implements full Redis password authentication, production TLS transport options, loopback port containment, and AES-256-GCM encryption of cached TOTP setup secrets.
+- **Scale-Resilient Cursor Pagination**: Employs an index-optimized cursor pager for session and user collections, preventing memory bloat and duplicate entries under real-time mutations. It concurrently calculates total record sets and populates CORS-exposed metadata headers (`X-Total-Count` / `X-Page-Count`).
 
 👉 Full Documentation: [**Detailed Security Architecture**](./docs/security_architecture.md)
 
@@ -146,6 +147,7 @@ To track and audit architectural decisions, we maintain a registry of design log
 | :------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
 | [**Unified Origin Validator**](./docs/design-decisions/audit-2026-07-20/unified-origin-validator.md)           | Unifies CORS, CSRF, and redirect whitelisting logic to block subdomain suffix spoofing and enforce HTTPS. | **July 2026 Security Audit** (Task [SEC-H1](./docs/audit/2026-07-20/task.md)) |
 | [**Client IP & Lockout Security**](./docs/design-decisions/audit-2026-07-20/client-ip-and-lockout-security.md) | Formulates the Nginx reverse-proxy ingress, proxy header filtering, and Redis-backed login lockouts.      | **July 2026 Security Audit** (Task [SEC-H3](./docs/audit/2026-07-20/task.md)) |
+| [**Cursor-Based Pagination**](./docs/design-decisions/audit-2026-07-20/cursor-based-pagination.md)             | Implements high-performance cursor pagination using take+1 slices, securing listing routes under scale.   | **July 2026 Security Audit** (Task [M-1](./docs/audit/2026-07-20/task.md))    |
 
 ---
 

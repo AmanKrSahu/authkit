@@ -1,5 +1,7 @@
 export interface SessionData {
   userId: string;
+  cursor?: string;
+  limit?: number;
 }
 
 export interface SessionByIdData {

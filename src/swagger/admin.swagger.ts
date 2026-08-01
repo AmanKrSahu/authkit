@@ -5,12 +5,69 @@
  *     tags:
  *       - Admin APIs
  *     summary: Fetch all users
- *     description: Retrieves a list of all users.
+ *     description: Retrieves a list of all users using cursor-based pagination.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: cursor
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: The unique user ID used as a cursor for pagination.
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *           maximum: 100
+ *         description: The maximum number of users to return.
  *     responses:
  *       200:
  *         description: Users retrieved successfully
+ *         headers:
+ *           X-Total-Count:
+ *             schema:
+ *               type: integer
+ *             description: Total count of users in the system.
+ *           X-Page-Count:
+ *             schema:
+ *               type: integer
+ *             description: Total number of pages available based on the limit.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         cursor:
+ *                           type: string
+ *                           nullable: true
+ *                         nextCursor:
+ *                           type: string
+ *                           nullable: true
+ *                         hasMore:
+ *                           type: boolean
+ *                         limit:
+ *                           type: integer
+ *                         totalCount:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
  *       403:
  *         description: Forbidden (Non-admin access)
  *       500:
@@ -53,7 +110,7 @@
  *     tags:
  *       - Admin APIs
  *     summary: Fetch all sessions of a user
- *     description: Retrieves all active sessions for a specific user.
+ *     description: Retrieves all active sessions for a specific user using cursor-based pagination.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -62,9 +119,66 @@
  *         required: true
  *         schema:
  *           type: string
+ *         description: The unique ID of the user.
+ *       - in: query
+ *         name: cursor
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: The unique session ID used as a cursor for pagination.
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *           maximum: 100
+ *         description: The maximum number of sessions to return.
  *     responses:
  *       200:
  *         description: User sessions retrieved successfully
+ *         headers:
+ *           X-Total-Count:
+ *             schema:
+ *               type: integer
+ *             description: Total count of active sessions for the user.
+ *           X-Page-Count:
+ *             schema:
+ *               type: integer
+ *             description: Total number of pages available based on the limit.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     sessions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         cursor:
+ *                           type: string
+ *                           nullable: true
+ *                         nextCursor:
+ *                           type: string
+ *                           nullable: true
+ *                         hasMore:
+ *                           type: boolean
+ *                         limit:
+ *                           type: integer
+ *                         totalCount:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
  *       400:
  *         description: Invalid User ID
  *       403:

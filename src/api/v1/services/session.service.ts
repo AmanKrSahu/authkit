@@ -8,6 +8,7 @@ import { AppError, NotFoundException } from '@core/common/utils/app-error';
 import { hashToken, isTokenExpired } from '@core/common/utils/crypto';
 import type { RefreshTPayload } from '@core/common/utils/jwt';
 import { refreshTokenSignOptions, verifyJwtToken } from '@core/common/utils/jwt';
+import { paginateWithCursor } from '@core/common/utils/pagination';
 import { deleteCache, deleteCacheMany, getCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
@@ -16,20 +17,38 @@ import prisma from '@core/database/prisma';
 export class SessionService {
   public async getSessions(sessionData: SessionData) {
     try {
-      const { userId } = sessionData;
+      const { userId, cursor, limit } = sessionData;
 
-      const sessions = await prisma.session.findMany({
-        where: {
-          userId,
-          expiresAt: {
-            gt: new Date(),
-          },
-          isRevoked: false,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      const result = await paginateWithCursor(
+        args =>
+          prisma.session.findMany({
+            where: {
+              userId,
+              expiresAt: {
+                gt: new Date(),
+              },
+              isRevoked: false,
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            ...args,
+          }),
+        () =>
+          prisma.session.count({
+            where: {
+              userId,
+              expiresAt: {
+                gt: new Date(),
+              },
+              isRevoked: false,
+            },
+          }),
+        { cursor, limit }
+      );
 
-      return sessions;
+      return {
+        sessions: result.data,
+        pagination: result.pagination,
+      };
     } catch (error) {
       if (error instanceof AppError) {
         throw error;

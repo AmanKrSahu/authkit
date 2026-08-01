@@ -83,13 +83,25 @@ export class AdminController {
   };
 
   @AsyncHandler
-  public getAllUsers = async (_req: Request, res: Response) => {
-    const users = await this.adminService.getAllUsers();
+  public getAllUsers = async (req: Request, res: Response) => {
+    const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+
+    const { users, pagination } = await this.adminService.getAllUsers({
+      cursor,
+      limit,
+    });
+
+    res.setHeader('X-Total-Count', pagination.totalCount.toString());
+    res.setHeader('X-Page-Count', pagination.totalPages.toString());
 
     return res.status(HTTPSTATUS.OK).json({
       success: true,
       message: 'Users retrieved successfully',
-      data: { users },
+      data: {
+        users,
+        pagination,
+      },
     });
   };
 
@@ -109,13 +121,25 @@ export class AdminController {
   @AsyncHandler
   public getUserSessions = async (req: Request, res: Response) => {
     const { userId } = getUserSessionsSchema.parse({ ...req.params });
+    const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
 
-    const sessions = await this.adminService.getUserSessions({ userId });
+    const { sessions, pagination } = await this.adminService.getUserSessions({
+      userId,
+      cursor,
+      limit,
+    });
+
+    res.setHeader('X-Total-Count', pagination.totalCount.toString());
+    res.setHeader('X-Page-Count', pagination.totalPages.toString());
 
     return res.status(HTTPSTATUS.OK).json({
       success: true,
       message: 'User sessions retrieved successfully',
-      data: { sessions },
+      data: {
+        sessions,
+        pagination,
+      },
     });
   };
 }
