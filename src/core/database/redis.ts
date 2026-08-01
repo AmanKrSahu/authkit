@@ -5,6 +5,13 @@ import Redis, { type RedisOptions } from 'ioredis';
 const redisConfig: RedisOptions = {
   host: config.REDIS.HOST,
   port: Number(config.REDIS.PORT),
+  maxRetriesPerRequest: null,
+  enableReadyCheck: true,
+  connectTimeout: 10_000,
+  retryStrategy(times) {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  },
 };
 
 if (config.REDIS.PASSWORD) {

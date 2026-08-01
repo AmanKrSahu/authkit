@@ -283,8 +283,50 @@ _Note: The email address is no longer supplied in the request body; the identity
 ### 6.2. List Sessions
 
 - **Route**: `GET /session`
-- **Description**: Retrieves all active sessions for the current user.
+- **Description**: Retrieves all active sessions for the current user using cursor-based pagination.
 - **Security**: Bearer Token
+
+**Query Parameters**
+
+- `cursor` (optional, string): The unique session ID used as the cursor for the next page of results.
+- `limit` (optional, number): The maximum number of sessions to return (default: `100`, max: `100`).
+
+**Response Headers**
+
+- `X-Total-Count` (number): The total count of active sessions matching the user.
+- `X-Page-Count` (number): The total number of pages available based on the limit.
+
+**Response Example**
+
+```json
+{
+  "success": true,
+  "message": "Sessions retrieved successfully",
+  "data": {
+    "sessions": [
+      {
+        "id": "cm0...",
+        "userId": "cm0...",
+        "userAgent": "Mozilla/5.0 ...",
+        "ipAddress": "127.0.0.1",
+        "deviceFingerprint": "fingerprint",
+        "isRevoked": false,
+        "createdAt": "2026-08-01T12:00:00.000Z",
+        "expiresAt": "2026-08-15T12:00:00.000Z",
+        "isCurrent": true
+      }
+    ],
+    "pagination": {
+      "cursor": null,
+      "nextCursor": null,
+      "hasMore": false,
+      "limit": 100,
+      "totalCount": 1,
+      "totalPages": 1
+    }
+  }
+}
+```
 
 ### 6.3. Get Session by ID
 
@@ -366,10 +408,46 @@ _Note: The email address is no longer supplied in the request body; the identity
 ### 7.6. Fetch All Users
 
 - **Route**: `GET /admin/users`
-- **Description**: Retrieves a list of all users.
+- **Description**: Retrieves a list of all users using cursor-based pagination.
 - **Security**: Bearer Token (Admin role)
 
-**Request Body**: None
+**Query Parameters**
+
+- `cursor` (optional, string): The unique user ID used as the cursor for the next page.
+- `limit` (optional, number): The maximum number of users to return (default: `100`, max: `100`).
+
+**Response Headers**
+
+- `X-Total-Count` (number): The total count of registered users in the database.
+- `X-Page-Count` (number): The total number of pages available based on the limit.
+
+**Response Example**
+
+```json
+{
+  "success": true,
+  "message": "Users retrieved successfully",
+  "data": {
+    "users": [
+      {
+        "id": "cm0...",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "role": "USER",
+        "createdAt": "2026-08-01T12:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "cursor": null,
+      "nextCursor": null,
+      "hasMore": false,
+      "limit": 100,
+      "totalCount": 1,
+      "totalPages": 1
+    }
+  }
+}
+```
 
 ### 7.7. Fetch A Specific User
 
@@ -382,10 +460,48 @@ _Note: The email address is no longer supplied in the request body; the identity
 ### 7.8. Fetch User Sessions
 
 - **Route**: `GET /admin/sessions/user/:userId`
-- **Description**: Retrieves all active sessions for a specific user.
+- **Description**: Retrieves all active sessions for a specific user using cursor-based pagination.
 - **Security**: Bearer Token (Admin role)
 
-**Request Body**: None
+**Query Parameters**
+
+- `cursor` (optional, string): The unique session ID used as the cursor for the next page.
+- `limit` (optional, number): The maximum number of sessions to return (default: `100`, max: `100`).
+
+**Response Headers**
+
+- `X-Total-Count` (number): The total count of active sessions matching the target user.
+- `X-Page-Count` (number): The total number of pages available based on the limit.
+
+**Response Example**
+
+```json
+{
+  "success": true,
+  "message": "User sessions retrieved successfully",
+  "data": {
+    "sessions": [
+      {
+        "id": "cm0...",
+        "userId": "cm0...",
+        "userAgent": "Mozilla/5.0 ...",
+        "ipAddress": "127.0.0.1",
+        "isRevoked": false,
+        "createdAt": "2026-08-01T12:00:00.000Z",
+        "expiresAt": "2026-08-15T12:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "cursor": null,
+      "nextCursor": null,
+      "hasMore": false,
+      "limit": 100,
+      "totalCount": 1,
+      "totalPages": 1
+    }
+  }
+}
+```
 
 ---
 

@@ -67,7 +67,7 @@ While JWTs are stateless, we track **Sessions** in the database to allow for imm
 
 We use **Redis** to implement sliding-window rate limiting.
 
-- **Upstream Gateway Protection**: In production, public traffic routes through an Nginx container. Nginx terminates SSL/TLS and overwrites proxy headers (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`), stripping out client-side header spoofing.
+- **Upstream Gateway Protection**: In production, public traffic routes through an Nginx container. Nginx terminates TLS (enforcing secure protocols `TLSv1.2` and `TLSv1.3` with hardened ciphers) and HTTP/2 multiplexing, automatically redirects all plaintext HTTP traffic (port 80) to HTTPS (port 443), and overwrites proxy headers (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`) to strip out client-side header spoofing.
 - **Proxy Trust Configuration**: Express is configured dynamically via the `TRUST_PROXY` environment variable. When set to trust the proxy, Express securely resolves client IPs using native `req.ip`.
 - **Global Limiter:** Protects the entire API from DDoS attacks (e.g., 200 requests/15min).
 - **Auth Limiter:** Stricter limits on `/auth/*` endpoints, magic-link routes, and MFA verify routes via the `authRateLimiter` middleware to prevent brute-force attacks.
@@ -170,6 +170,18 @@ AuthKit enforces strict policies to prevent information disclosure in error resp
 
 - **Generic 500 Error Responses**: Catch-all error handlers sanitize HTTP 500 responses to return a generic `{ message: 'Internal Server Error' }` payload, fully stripping stack traces and internal query messages from reaching client outputs. Complete error logs are securely recorded to the backend Winston log writer.
 - **Swagger Documentation Gating**: The interactive Swagger documentation UI mounted at `/docs` is conditionally mounted only during non-production environments (`config.NODE_ENV !== 'production'`), ensuring public-facing deployments do not expose private API paths or input/output schema signatures.
+
+### 2.14. Scale-Resilient Cursor Pagination
+
+To protect backend memory, CPU, and database resources from Denial of Service (DoS) attacks via massive, unbounded payloads, listing endpoints (user list, user sessions, active sessions) enforce strict Cursor-Based Pagination. The pagination helper executes database range queries ($O(1)$ index lookup complexity) and runs count lookups concurrently using `Promise.all` to set client-facing metadata headers (`X-Total-Count` and `X-Page-Count`), ensuring stable performance under large scales without data drift.
+
+### 2.15. Connection Resilience & Resource Protection
+
+To ensure continuous system availability under high concurrency and prevent cascading thread starvation or connection exhaustion:
+
+- **Prisma Connection Pooling**: The database pool is hardened with strict resource limits (`max: 20` slots, `idleTimeoutMillis: 30000`, `connectionTimeoutMillis: 5000`) and a maximum use lifecycle (`maxUses: 7500`) to prevent memory leaks and database starvation.
+- **Redis Client Resilience**: The cache client operates with exponential connection retry backoffs and explicit connection timeouts, preventing process crashes on temporary network drops.
+- **Batch Cache Invalidation**: Multi-key cache revocations are executed in a single network round-trip batch command (`deleteCacheMany`), neutralizing performance degradation during mass logouts.
 
 ---
 

@@ -8,7 +8,8 @@ import { AppError, NotFoundException } from '@core/common/utils/app-error';
 import { hashToken, isTokenExpired } from '@core/common/utils/crypto';
 import type { RefreshTPayload } from '@core/common/utils/jwt';
 import { refreshTokenSignOptions, verifyJwtToken } from '@core/common/utils/jwt';
-import { deleteCache, getCache } from '@core/common/utils/redis-helpers';
+import { paginateWithCursor } from '@core/common/utils/pagination';
+import { deleteCache, deleteCacheMany, getCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
@@ -16,20 +17,38 @@ import prisma from '@core/database/prisma';
 export class SessionService {
   public async getSessions(sessionData: SessionData) {
     try {
-      const { userId } = sessionData;
+      const { userId, cursor, limit } = sessionData;
 
-      const sessions = await prisma.session.findMany({
-        where: {
-          userId,
-          expiresAt: {
-            gt: new Date(),
-          },
-          isRevoked: false,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      const result = await paginateWithCursor(
+        args =>
+          prisma.session.findMany({
+            where: {
+              userId,
+              expiresAt: {
+                gt: new Date(),
+              },
+              isRevoked: false,
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            ...args,
+          }),
+        () =>
+          prisma.session.count({
+            where: {
+              userId,
+              expiresAt: {
+                gt: new Date(),
+              },
+              isRevoked: false,
+            },
+          }),
+        { cursor, limit }
+      );
 
-      return sessions;
+      return {
+        sessions: result.data,
+        pagination: result.pagination,
+      };
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -46,30 +65,12 @@ export class SessionService {
         throw new AppError('Invalid session ID', HTTPSTATUS.BAD_REQUEST);
       }
 
-      // 1. Try Redis
-      const cachedSessionStr = await getCache(`session:${sessionId}`);
-      if (cachedSessionStr) {
-        const session = JSON.parse(cachedSessionStr);
-        // Verify user owns this session (security check)
-        if (session?.userId === userId) {
-          const isExpired = new Date(session.expiresAt).getTime() < Date.now();
-          if (!session.isRevoked && !isExpired) {
-            // Destructure to return session properties matching DB fallback schema
-            const { user: _user, ...sessionWithoutUser } = session;
-            return sessionWithoutUser;
-          }
-        }
-      }
-
-      // 2. Fallback to DB
-      const session = await prisma.session.findFirst({
-        where: {
-          id: sessionId,
-          userId: userId,
-        },
+      // Query DB directly (on primary key id, extremely fast and indexed)
+      const session = await prisma.session.findUnique({
+        where: { id: sessionId },
       });
 
-      if (!session) {
+      if (session?.userId !== userId) {
         throw new NotFoundException('Session not found');
       }
 
@@ -81,8 +82,9 @@ export class SessionService {
             revokedAt: new Date(),
           },
         });
-        // Invalidate just in case
+        // Invalidate hot-path JWT token cache and active RTR token hash cache
         await deleteCache(`session:${sessionId}`);
+        await deleteCache(`active_refresh_token:${sessionId}`);
         throw new AppError('Session expired', HTTPSTATUS.UNAUTHORIZED);
       }
 
@@ -125,11 +127,12 @@ export class SessionService {
         },
       });
 
-      // Invalidate Redis keys
-      for (const session of sessionsToRevoke) {
-        await deleteCache(`session:${session.id}`);
-        await deleteCache(`active_refresh_token:${session.id}`);
-      }
+      // Invalidate Redis keys in a single command
+      const cacheKeys = sessionsToRevoke.flatMap(session => [
+        `session:${session.id}`,
+        `active_refresh_token:${session.id}`,
+      ]);
+      await deleteCacheMany(cacheKeys);
 
       return null;
     } catch (error) {
@@ -144,26 +147,21 @@ export class SessionService {
     try {
       const { userId, sessionId } = revokeSessionByIdData;
 
-      const session = await prisma.session.findFirst({
+      // Update target session directly and check count to avoid pre-fetch query
+      const result = await prisma.session.updateMany({
         where: {
           id: sessionId,
           userId: userId,
-        },
-      });
-
-      if (!session) {
-        throw new NotFoundException('Session not found');
-      }
-
-      await prisma.session.update({
-        where: {
-          id: sessionId,
         },
         data: {
           isRevoked: true,
           revokedAt: new Date(),
         },
       });
+
+      if (result.count === 0) {
+        throw new NotFoundException('Session not found');
+      }
 
       await deleteCache(`session:${sessionId}`);
       await deleteCache(`active_refresh_token:${sessionId}`);

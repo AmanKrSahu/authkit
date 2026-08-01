@@ -276,9 +276,6 @@
  *               - password
  *               - confirmPassword
  *             properties:
- *               email:
- *                 type: string
- *                 format: email
  *               password:
  *                 type: string
  *                 format: password

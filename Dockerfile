@@ -16,7 +16,8 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
+# Use BuildKit cache mounts for local/CI dependency caching
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm config set store-dir /pnpm/store && pnpm install --frozen-lockfile
 
 # =========================================
 # Stage 3: Builder
@@ -47,7 +48,8 @@ RUN pnpm prune --prod --ignore-scripts
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache dumb-init
+# Install dumb-init and libc6-compat for native module compatibility (e.g. bcrypt)
+RUN apk add --no-cache dumb-init libc6-compat
 ENV NODE_ENV=production
 
 # Create non-root user

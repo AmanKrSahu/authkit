@@ -78,6 +78,9 @@ model Session {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("session")
+  @@index([userId])
+  @@index([userId, deviceFingerprint])
+  @@index([userId, isRevoked, expiresAt])
 }
 
 model OidcClient {

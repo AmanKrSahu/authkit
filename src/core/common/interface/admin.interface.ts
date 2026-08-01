@@ -27,4 +27,11 @@ export interface GetUserByIdData {
 
 export interface GetUserSessionsData {
   userId: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface GetAllUsersData {
+  cursor?: string;
+  limit?: number;
 }
