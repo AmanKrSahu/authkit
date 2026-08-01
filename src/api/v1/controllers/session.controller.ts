@@ -22,17 +22,30 @@ export class SessionController {
       throw new UnauthorizedException('User not authenticated');
     }
 
-    const sessions = await this.sessionService.getSessions({ userId });
+    const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+
+    const { sessions, pagination } = await this.sessionService.getSessions({
+      userId,
+      cursor,
+      limit,
+    });
 
     const modifiedSessions = sessions.map(session => ({
       ...session,
       isCurrent: session.id === currentSessionId,
     }));
 
+    res.setHeader('X-Total-Count', pagination.totalCount.toString());
+    res.setHeader('X-Page-Count', pagination.totalPages.toString());
+
     return res.status(HTTPSTATUS.OK).json({
       success: true,
       message: 'Sessions retrieved successfully',
-      data: { session: modifiedSessions },
+      data: {
+        sessions: modifiedSessions,
+        pagination,
+      },
     });
   };
 

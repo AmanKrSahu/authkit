@@ -1,4 +1,26 @@
 services:
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    container_name: authkit_migrator_dev
+    restart: 'no'
+    command: pnpm db:push
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    volumes:
+      - ./prisma:/app/prisma
+      - ./prisma.config.ts:/app/prisma.config.ts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - authkit_network
+
   api:
     build:
       context: .
@@ -15,10 +37,17 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
     volumes:
-      - .:/app
-      - /app/node_modules
-    command: sh -c "pnpm db:generate && pnpm db:push && pnpm dev"
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./scripts:/app/scripts
+      - ./package.json:/app/package.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsup.config.ts:/app/tsup.config.ts
+      - ./prisma.config.ts:/app/prisma.config.ts
+    command: sh -c "pnpm db:generate && pnpm dev"
     depends_on:
+      migrator:
+        condition: service_completed_successfully
       redis:
         condition: service_started
       postgres:

@@ -42,6 +42,18 @@ export const deleteCache = async (key: string) => {
 };
 
 /**
+ * Delete multiple keys in a single command
+ */
+export const deleteCacheMany = async (keys: string[]) => {
+  if (!keys || keys.length === 0) return;
+  try {
+    await redis.del(...keys);
+  } catch (error) {
+    logger.error(`Redis DeleteMany Error for keys ${keys.join(', ')}:`, error as Error);
+  }
+};
+
+/**
  * Increment a key atomically.
  * Returns the new value.
  * If key doesn't exist, it starts at 1.

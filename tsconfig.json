@@ -2,7 +2,7 @@
   "compilerOptions": {
     /* General Options */
     "ignoreDeprecations": "5.0",
-    "target": "es2021",
+    "target": "es2022",
     "module": "ESNext",
     "rootDir": "./",
     "outDir": "./dist",
