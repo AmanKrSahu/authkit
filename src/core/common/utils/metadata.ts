@@ -9,16 +9,29 @@ import { deleteCache, getCache, incrementCache, setCache } from './redis-helpers
  * Application Metadata Utilities
  * ============================================================================ */
 
+let cachedAppVersion: string | null = null;
+
 /**
  * Retrieves the current application version from package.json.
  * Falls back to a default version if the file cannot be read.
  */
 export const getAppVersion = async (): Promise<string> => {
+  if (cachedAppVersion) {
+    return cachedAppVersion;
+  }
+
+  if (process.env.npm_package_version) {
+    cachedAppVersion = process.env.npm_package_version;
+    return cachedAppVersion;
+  }
+
   try {
     const packageJson = await import('../../../../package.json');
-    return packageJson.version ?? '1.0.0';
+    cachedAppVersion = packageJson.version ?? '1.0.0';
+    return cachedAppVersion;
   } catch {
-    return '1.0.0';
+    cachedAppVersion = '1.0.0';
+    return cachedAppVersion;
   }
 };
 

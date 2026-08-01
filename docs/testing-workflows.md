@@ -131,18 +131,32 @@ TRUST_PROXY="1"                  # Trusts Nginx as the single upstream proxy hop
 NGINX_SERVER_NAME="localhost"    # Or your production domain, e.g. authkit.yourdomain.com
 ```
 
-### 3.2. Accessing Endpoints
+### 3.2. Accessing Endpoints (HTTP/2 & TLS/SSL)
 
-_Because traffic is routed through Nginx, you must make all requests on port `80` (not 8000)._
+_The Nginx gateway automatically redirects all plaintext HTTP traffic (port 80) to secure HTTPS (port 443) using HTTP/2 multiplexing._
 
-- **API Base Url**: `http://localhost/api/v1` (or `http://authkit.yourdomain.com/api/v1`)
-- **Swagger Documentation**: `http://localhost/docs` (or `http://authkit.yourdomain.com/docs`)
-- **cURL Example**:
-  ```bash
-  curl -X POST http://localhost/api/v1/auth/login \
-    -H "Content-Type: application/json" \
-    -d '{"email":"test@example.com","password":"yourpassword"}'
-  ```
+- **API Base Url**: `https://localhost/api/v1` (or `https://authkit.yourdomain.com/api/v1`)
+- **Swagger Documentation**: `https://localhost/docs` (or `https://authkit.yourdomain.com/docs`)
+
+#### Handling Self-Signed Certificate Warnings in Development/Testing:
+
+Because the production compose environment automatically generates temporary self-signed SSL/TLS certificates at boot (via the `nginx-init` helper container), you will encounter SSL trust warnings:
+
+1.  **In Web Browser**: Access `https://localhost/docs` or `https://localhost/api/v1/health` and click **"Advanced" -> "Proceed to localhost (unsafe)"** to allow the browser to establish the secure handshake.
+2.  **In Postman**: Go to **Settings -> General** and disable **"SSL certificate verification"**.
+3.  **In cURL**: Pass the `-k` or `--insecure` flag to bypass certificate authority validation:
+    ```bash
+    curl -k -L https://localhost/api/v1/health
+    ```
+    _(The `-L` flag is recommended to follow any redirects from HTTP to HTTPS automatically)._
+
+#### cURL Login Example:
+
+```bash
+curl -k -L -X POST https://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"yourpassword"}'
+```
 
 ### 3.3. Email & Token Verification (Real Mailer)
 

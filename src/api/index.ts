@@ -42,7 +42,7 @@ app.use(
     },
   })
 );
-app.use(compression());
+app.use(compression({ threshold: 1024 }));
 app.use(globalRateLimiter);
 
 app.use(
