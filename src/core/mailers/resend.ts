@@ -33,11 +33,13 @@ export class EmailService {
   private async sendEmail({ to, subject, html, from }: EmailTemplate) {
     if (config.NODE_ENV !== 'production') {
       try {
-        const dir = path.join(process.cwd(), 'tmp');
+        const dir = path.join(process.cwd(), 'logs', 'emails');
         await fs.mkdir(dir, { recursive: true });
         const filename = `${to}-${subject.replaceAll(/\s+/g, '_').toLowerCase()}.html`;
         await fs.writeFile(path.join(dir, filename), html);
-        logger.info(`[Dev Email] Saved verification/notification email to: tmp/${filename}`);
+        logger.info(
+          `[Dev Email] Saved verification/notification email to: logs/emails/${filename}`
+        );
       } catch (error) {
         logger.error('Failed to save dev email to file:', error);
       }

@@ -1,0 +1,979 @@
+{
+  "info": {
+    "_postman_id": "authkit-iam-collection-v1",
+    "name": "AuthKit IAM & OIDC Provider API Suite",
+    "description": "Exhaustive Postman Collection for AuthKit (Identity & Access Management microservice). Organized into 10 logical workflow folders covering Health, Authentication, Magic Links, MFA, OAuth, User Profile, Sessions, Admin Controls, OIDC Provider Protocols, and Custom OIDC Interaction Flows.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "csrfToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mfaLoginToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "oidcClientId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "oidcClientSecret",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Service Health & Diagnostics",
+      "description": "Endpoints to check API status and service availability.",
+      "item": [
+        {
+          "name": "Service Base Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Returns basic service status message."
+          }
+        },
+        {
+          "name": "Basic Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Basic server health check."
+          }
+        },
+        {
+          "name": "Detailed System Diagnostics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/detailed",
+              "host": ["{{baseUrl}}"],
+              "path": ["health", "detailed"]
+            },
+            "description": "Detailed health check including database, Redis status, uptime, and memory usage."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Authentication & Account Lifecycle",
+      "description": "User registration, email verification, credentials authentication, token rotation, and password reset flows.",
+      "item": [
+        {
+          "name": "Register User Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"name\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Registers a new user account with unverified email status and dispatches welcome/verification emails."
+          }
+        },
+        {
+          "name": "Register User Account (Edge Case - Duplicate Email)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"name\": \"Duplicate User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Edge Case: Attempting to register an already registered email address returns 400 Bad Request."
+          }
+        },
+        {
+          "name": "Verify Email Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<verification_token_from_email_or_redis>\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email"]
+            },
+            "description": "Verifies the user's email address using the token delivered via email or logs/emails/*.html."
+          }
+        },
+        {
+          "name": "Resend Verification Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/resend-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "resend-verification"]
+            },
+            "description": "Resends the email verification notification."
+          }
+        },
+        {
+          "name": "Login with Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticates credentials and returns access and refresh tokens."
+          }
+        },
+        {
+          "name": "Login (Edge Case - Unverified Email Rejection)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"unverified@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Edge Case: Rejects login attempt for unverified email accounts with 400 Bad Request."
+          }
+        },
+        {
+          "name": "Login (Edge Case - Account Lockout Trigger)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"WrongPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Edge Case: Enforces 15-minute account lockout after 5 consecutive failed password attempts."
+          }
+        },
+        {
+          "name": "Refresh Access Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-csrf-token", "value": "{{csrfToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh-token"]
+            },
+            "description": "Rotates refresh token and issues a new access token using the refreshToken HttpOnly cookie."
+          }
+        },
+        {
+          "name": "Forgot Password (Request OTP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Dispatches a 6-digit OTP code to the user's email for password reset."
+          }
+        },
+        {
+          "name": "Verify Reset Password OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-otp"]
+            },
+            "description": "Verifies the 6-digit reset OTP and sets a password reset session cookie."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-csrf-token", "value": "{{csrfToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewPassword456!\",\n  \"confirmPassword\": \"NewPassword456!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Resets the user password using the reset token derived from the cookie payload."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"NewPassword456!\",\n  \"newPassword\": \"UpdatedPassword789!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "change-password"]
+            },
+            "description": "Changes authenticated user's password and revokes all active sessions."
+          }
+        },
+        {
+          "name": "Logout & Revoke Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "x-csrf-token", "value": "{{csrfToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logs out the authenticated user, revokes session in DB, and purges Redis token cache."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Passwordless (Magic Link)",
+      "description": "Magic link login request and token verification flows.",
+      "item": [
+        {
+          "name": "Request Magic Link",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"magic@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/magic-link/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["magic-link", "login"]
+            },
+            "description": "Generates a magic link token and sends a login link to the recipient."
+          }
+        },
+        {
+          "name": "Verify Magic Link Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<token_from_magic_link>\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/magic-link/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["magic-link", "verify"]
+            },
+            "description": "Verifies magic link token and authenticates the user, setting session cookies."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Multi-Factor Authentication (MFA)",
+      "description": "MFA setup, TOTP verification, login challenges, and backup code recovery.",
+      "item": [
+        {
+          "name": "Generate MFA Setup Secret",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/setup",
+              "host": ["{{baseUrl}}"],
+              "path": ["mfa", "setup"]
+            },
+            "description": "Generates a TOTP secret key and QR code data URL for MFA enrollment."
+          }
+        },
+        {
+          "name": "Verify Setup & Activate 2FA",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mfa/verify-setup",
+              "host": ["{{baseUrl}}"],
+              "path": ["mfa", "verify-setup"]
+            },
+            "description": "Verifies 6-digit TOTP code, enables 2FA on the account, and returns 5 backup recovery codes."
+          }
+        },
+        {
+          "name": "Verify MFA Challenge Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mfa/verify-login",
+              "host": ["{{baseUrl}}"],
+              "path": ["mfa", "verify-login"]
+            },
+            "description": "Verifies MFA TOTP code during login challenge (uses mfaLoginToken cookie)."
+          }
+        },
+        {
+          "name": "Verify MFA Challenge with Backup Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BACKUP-CODE-1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mfa/verify-login",
+              "host": ["{{baseUrl}}"],
+              "path": ["mfa", "verify-login"]
+            },
+            "description": "Consumes a single-use backup recovery code during MFA login challenge."
+          }
+        },
+        {
+          "name": "Revoke & Disable MFA",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"UpdatedPassword789!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mfa/revoke",
+              "host": ["{{baseUrl}}"],
+              "path": ["mfa", "revoke"]
+            },
+            "description": "Disables MFA on user account (password verified if account has password credentials)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Social Authentication (OAuth 2.0)",
+      "description": "Google OAuth 2.0 redirection and callback endpoints.",
+      "item": [
+        {
+          "name": "Redirect to Google OAuth",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oauth/google?redirectUrl=http://localhost:3000",
+              "host": ["{{baseUrl}}"],
+              "path": ["oauth", "google"],
+              "query": [{ "key": "redirectUrl", "value": "http://localhost:3000" }]
+            },
+            "description": "Initiates Google OAuth 2.0 login handshake."
+          }
+        },
+        {
+          "name": "Google OAuth Callback Handling",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oauth/google/callback?code=mock_code&state=mock_state",
+              "host": ["{{baseUrl}}"],
+              "path": ["oauth", "google", "callback"],
+              "query": [
+                { "key": "code", "value": "mock_code" },
+                { "key": "state", "value": "mock_state" }
+              ]
+            },
+            "description": "OAuth 2.0 authorization code callback handler for Google provider."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. User Profile Management",
+      "description": "Authenticated user profile endpoints.",
+      "item": [
+        {
+          "name": "Get Currently Authenticated User Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/user/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "me"]
+            },
+            "description": "Returns profile details for the currently authenticated user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Session Management",
+      "description": "Active session query, paginated listing, and session revocation endpoints.",
+      "item": [
+        {
+          "name": "List Active User Sessions (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/session/?limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["session", ""],
+              "query": [{ "key": "limit", "value": "100" }]
+            },
+            "description": "Retrieves active user sessions using cursor-based pagination with X-Total-Count headers."
+          }
+        },
+        {
+          "name": "Get Session Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/session/:sessionId",
+              "host": ["{{baseUrl}}"],
+              "path": ["session", ":sessionId"],
+              "variable": [{ "key": "sessionId", "value": "session_id_here" }]
+            },
+            "description": "Fetches metadata for a specific session ID."
+          }
+        },
+        {
+          "name": "Revoke Specific Session by ID",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/session/:sessionId",
+              "host": ["{{baseUrl}}"],
+              "path": ["session", ":sessionId"],
+              "variable": [{ "key": "sessionId", "value": "session_id_here" }]
+            },
+            "description": "Revokes a specific active session by ID."
+          }
+        },
+        {
+          "name": "Revoke All Other User Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/session/",
+              "host": ["{{baseUrl}}"],
+              "path": ["session", ""]
+            },
+            "description": "Revokes all active sessions for the current user except the current session."
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Admin Controls & Role Management",
+      "description": "Admin user management, role escalation, session revocation, and OIDC client registration endpoints.",
+      "item": [
+        {
+          "name": "Promote User to Admin Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"target_user_id_here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/promote",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", "promote"]
+            },
+            "description": "Promotes target user role from USER to ADMIN."
+          }
+        },
+        {
+          "name": "List All System Users (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"],
+              "query": [{ "key": "limit", "value": "100" }]
+            },
+            "description": "Queries all registered users with cursor-based pagination."
+          }
+        },
+        {
+          "name": "Get Specific User Profile by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", ":userId"],
+              "variable": [{ "key": "userId", "value": "user_id_here" }]
+            },
+            "description": "Retrieves user details by user ID."
+          }
+        },
+        {
+          "name": "Delete User Account",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users", ":userId"],
+              "variable": [{ "key": "userId", "value": "user_id_here" }]
+            },
+            "description": "Deletes target user account and all associated sessions and credentials."
+          }
+        },
+        {
+          "name": "List Target User Active Sessions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/sessions/user/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "sessions", "user", ":userId"],
+              "variable": [{ "key": "userId", "value": "user_id_here" }]
+            },
+            "description": "Lists all active sessions belonging to target user ID."
+          }
+        },
+        {
+          "name": "Revoke Target User All Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/sessions/user/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "sessions", "user", ":userId"],
+              "variable": [{ "key": "userId", "value": "user_id_here" }]
+            },
+            "description": "Revokes all active sessions for target user ID."
+          }
+        },
+        {
+          "name": "Revoke Target Session by ID",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/sessions/:sessionId",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "sessions", ":sessionId"],
+              "variable": [{ "key": "sessionId", "value": "session_id_here" }]
+            },
+            "description": "Admin endpoint to revoke any session by session ID."
+          }
+        },
+        {
+          "name": "Dynamically Register OIDC Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientName\": \"Test Application\",\n  \"redirectUrls\": [\"http://localhost:3000/callback\"],\n  \"grantTypes\": [\"authorization_code\", \"refresh_token\"],\n  \"scope\": \"openid profile email\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/oidc/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "oidc", "clients"]
+            },
+            "description": "Registers a new OIDC client application and generates credentials."
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. OpenID Connect (OIDC 1.0) Provider Protocols",
+      "description": "Standard OIDC 1.0 Discovery, JWKS, Authorization Code, Token, UserInfo, Introspection, and Revocation endpoints.",
+      "item": [
+        {
+          "name": "OIDC Discovery Document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oidc/.well-known/openid-configuration",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", ".well-known", "openid-configuration"]
+            },
+            "description": "Fetches OIDC Provider discovery configuration metadata."
+          }
+        },
+        {
+          "name": "OIDC Public JSON Web Key Set (JWKS)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oidc/jwks",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "jwks"]
+            },
+            "description": "Returns public RSA signing keys for token verification."
+          }
+        },
+        {
+          "name": "OIDC Authorization Request (PKCE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oidc/auth?client_id={{oidcClientId}}&response_type=code&scope=openid%20profile%20email&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fcallback&code_challenge=challenge_string&code_challenge_method=S256&state=state123",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "auth"],
+              "query": [
+                { "key": "client_id", "value": "{{oidcClientId}}" },
+                { "key": "response_type", "value": "code" },
+                { "key": "scope", "value": "openid profile email" },
+                { "key": "redirect_uri", "value": "http://localhost:3000/callback" },
+                { "key": "code_challenge", "value": "challenge_string" },
+                { "key": "code_challenge_method", "value": "S256" },
+                { "key": "state", "value": "state123" }
+              ]
+            },
+            "description": "Starts OIDC Authorization Code Flow with PKCE parameters."
+          }
+        },
+        {
+          "name": "OIDC Authorization Code Exchange",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "authorization_code" },
+                { "key": "client_id", "value": "{{oidcClientId}}" },
+                { "key": "client_secret", "value": "{{oidcClientSecret}}" },
+                { "key": "code", "value": "authorization_code_here" },
+                { "key": "redirect_uri", "value": "http://localhost:3000/callback" },
+                { "key": "code_verifier", "value": "verifier_string" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oidc/token",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "token"]
+            },
+            "description": "Exchanges authorization code for ID, Access, and Refresh tokens."
+          }
+        },
+        {
+          "name": "OIDC UserInfo Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/oidc/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "me"]
+            },
+            "description": "Returns user claims associated with the OIDC access token."
+          }
+        },
+        {
+          "name": "OIDC Token Introspection",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "token", "value": "{{accessToken}}" },
+                { "key": "client_id", "value": "{{oidcClientId}}" },
+                { "key": "client_secret", "value": "{{oidcClientSecret}}" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oidc/token/introspection",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "token", "introspection"]
+            },
+            "description": "Introspects token state and validity."
+          }
+        },
+        {
+          "name": "OIDC Token Revocation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "token", "value": "{{refreshToken}}" },
+                { "key": "client_id", "value": "{{oidcClientId}}" },
+                { "key": "client_secret", "value": "{{oidcClientSecret}}" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oidc/token/revocation",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "token", "revocation"]
+            },
+            "description": "Revokes active OIDC access or refresh token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. OIDC Custom Interaction Flows",
+      "description": "Custom session bridge and interaction prompt endpoints used during OIDC login/consent.",
+      "item": [
+        {
+          "name": "Render OIDC Interaction Details & Session Bridge Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oidc/interaction/:uid",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "interaction", ":uid"],
+              "variable": [{ "key": "uid", "value": "interaction_uid_here" }]
+            },
+            "description": "Retrieves interaction prompt details. Evaluates active Direct API session cookie for automatic Session Bridge authentication."
+          }
+        },
+        {
+          "name": "Submit OIDC Interaction Login Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oidc/interaction/:uid/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "interaction", ":uid", "login"],
+              "variable": [{ "key": "uid", "value": "interaction_uid_here" }]
+            },
+            "description": "Submits credentials for OIDC interaction prompt."
+          }
+        },
+        {
+          "name": "Submit OIDC Interaction MFA Challenge Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oidc/interaction/:uid/mfa",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "interaction", ":uid", "mfa"],
+              "variable": [{ "key": "uid", "value": "interaction_uid_here" }]
+            },
+            "description": "Submits TOTP code for MFA-enabled accounts during OIDC interaction."
+          }
+        },
+        {
+          "name": "Confirm OIDC Interaction Consent Approval",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/oidc/interaction/:uid/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "interaction", ":uid", "confirm"],
+              "variable": [{ "key": "uid", "value": "interaction_uid_here" }]
+            },
+            "description": "Confirms user consent for requested OIDC scopes."
+          }
+        },
+        {
+          "name": "Abort OIDC Interaction Prompt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oidc/interaction/:uid/abort",
+              "host": ["{{baseUrl}}"],
+              "path": ["oidc", "interaction", ":uid", "abort"],
+              "variable": [{ "key": "uid", "value": "interaction_uid_here" }]
+            },
+            "description": "Aborts OIDC interaction prompt."
+          }
+        }
+      ]
+    }
+  ]
+}

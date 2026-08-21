@@ -20,7 +20,8 @@
     "baseUrl": "./src",
     "paths": {
       "@core/*": ["core/*"],
-      "@api/*": ["api/*"]
+      "@api/*": ["api/*"],
+      "@tests/*": ["../tests/*"]
     },
 
     /* Emit Options */
@@ -45,10 +46,11 @@
     "src/**/*.d.ts",
     "prisma.config.ts",
     "tsup.config.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "tests/**/*.ts"
   ],
 
-  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts"],
+  "exclude": ["node_modules", "dist"],
 
   "ts-node": {
     "esm": true,
