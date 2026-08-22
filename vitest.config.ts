@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
@@ -19,7 +18,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**'],
+    setupFiles: ['./tests/setup.ts'],
     fileParallelism: false, // Run test files sequentially to prevent database state collision and container teardown races
     testTimeout: 60000,
     hookTimeout: 60000,

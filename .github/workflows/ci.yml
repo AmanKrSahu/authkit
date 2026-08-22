@@ -48,13 +48,4 @@ jobs:
         run: pnpm type-check
 
       - name: Run In-Memory Test Suite (with Coverage)
-        env:
-          NODE_ENV: test
-          JWT_SECRET: 'test-jwt-secret-key-must-be-32-chars-long'
-          JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-must-be-32-chars-long'
-          JWT_RESET_SECRET: 'test-jwt-reset-secret-must-be-32-chars-long'
-          JWT_MFA_LOGIN_SECRET: 'test-jwt-mfa-secret-must-be-32-chars-long'
-          AUTHENTICATOR_APP_SECRET: 'test-authenticator-app-secret-32-bytes'
-          OIDC_COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2'
-          OIDC_JWKS: '{"keys":[{"kty":"oct","k":"test-oidc-secret-key-32-chars"}]}'
         run: pnpm test
