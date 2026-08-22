@@ -1,0 +1,1976 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AuthKit APIs Documentation",
+    "version": "1.0.0",
+    "description": "API documentation for AuthKit authentication and authorization."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "API Server (development)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "csrfAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-csrf-token"
+      },
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic"
+      },
+      "googleOAuth": {
+        "type": "oauth2",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+            "tokenUrl": "https://oauth2.googleapis.com/token",
+            "scopes": {
+              "openid": "OpenID Connect",
+              "profile": "User profile Information",
+              "email": "User Email Information"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": [],
+      "csrfAuth": []
+    }
+  ],
+  "paths": {
+    "/admin/users": {
+      "get": {
+        "tags": ["Admin APIs"],
+        "summary": "Fetch all users",
+        "description": "Retrieves a list of all users using cursor-based pagination.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique user ID used as a cursor for pagination."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 100
+            },
+            "description": "The maximum number of users to return."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users retrieved successfully",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total count of users in the system."
+              },
+              "X-Page-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total number of pages available based on the limit."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "users": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "cursor": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "nextCursor": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalCount": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Non-admin access)"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}": {
+      "get": {
+        "tags": ["Admin APIs"],
+        "summary": "Fetch a user by ID",
+        "description": "Retrieves details of a specific user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User retrieved successfully"
+          },
+          "400": {
+            "description": "Invalid User ID"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin APIs"],
+        "summary": "Delete a user",
+        "description": "Deletes a user account and all associated data.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully"
+          },
+          "400": {
+            "description": "Invalid User ID"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/admin/sessions/user/{userId}": {
+      "get": {
+        "tags": ["Admin APIs"],
+        "summary": "Fetch all sessions of a user",
+        "description": "Retrieves all active sessions for a specific user using cursor-based pagination.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique ID of the user."
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique session ID used as a cursor for pagination."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 100
+            },
+            "description": "The maximum number of sessions to return."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User sessions retrieved successfully",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total count of active sessions for the user."
+              },
+              "X-Page-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total number of pages available based on the limit."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "cursor": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "nextCursor": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalCount": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid User ID"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin APIs"],
+        "summary": "Revoke all sessions for a user",
+        "description": "Revokes all active sessions for a specific user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User sessions revoked successfully"
+          },
+          "400": {
+            "description": "Invalid User ID"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/admin/users/promote": {
+      "post": {
+        "tags": ["Admin APIs"],
+        "summary": "Promote a user to Admin",
+        "description": "Promotes an existing user to the ADMIN role.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["userId"],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User promoted successfully"
+          },
+          "400": {
+            "description": "Invalid input or user not found"
+          },
+          "403": {
+            "description": "Forbidden (Non-admin access)"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/admin/sessions/{sessionId}": {
+      "delete": {
+        "tags": ["Admin APIs"],
+        "summary": "Revoke session by ID",
+        "description": "Revokes a specific session.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session revoked successfully"
+          },
+          "400": {
+            "description": "Invalid Session ID"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/admin/oidc/clients": {
+      "post": {
+        "tags": ["Admin APIs"],
+        "summary": "Register an OIDC Client",
+        "description": "Registers a new OIDC client and returns the generated Client ID and Client Secret. Ensure you save the secret as it will not be shown again.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["clientName", "redirectUrls"],
+                "properties": {
+                  "clientName": {
+                    "type": "string"
+                  },
+                  "redirectUrls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "grantTypes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": ["authorization_code", "refresh_token"]
+                  },
+                  "scope": {
+                    "type": "string",
+                    "default": "openid profile email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Client registered successfully with auto-generated Client ID and Secret",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "client": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "clientId": {
+                              "type": "string"
+                            },
+                            "clientName": {
+                              "type": "string"
+                            },
+                            "clientSecret": {
+                              "type": "string"
+                            },
+                            "redirectUrls": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "grantTypes": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "scope": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Register a new user",
+        "description": "Creates a new user account and sends a verification email.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password", "confirmPassword"],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "confirmPassword": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "redirectUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully"
+          },
+          "400": {
+            "description": "Bad request - Invalid input data"
+          },
+          "409": {
+            "description": "Conflict - Email already exists"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Verify email address",
+        "description": "Verifies the user's email address using a code.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token"],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Email verified successfully"
+          },
+          "400": {
+            "description": "Invalid or missing token"
+          },
+          "404": {
+            "description": "User not found or already verified"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/resend-verification": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Resend verification email",
+        "description": "Resends the verification email to the user's email address.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "redirectUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Verification email sent successfully"
+          },
+          "400": {
+            "description": "Invalid email address"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Login user",
+        "description": "Authenticates a user and returns access/refresh tokens.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful"
+          },
+          "400": {
+            "description": "Too many failed attempts - Account temporarily locked for 15 minutes"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          },
+          "403": {
+            "description": "Account not verified"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Logout user",
+        "description": "Logs out the authenticated user and clears session.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "csrfAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/refresh-token": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Refresh access token",
+        "description": "Generates a new access token using a refresh token.",
+        "security": [
+          {
+            "csrfAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token refreshed successfully"
+          },
+          "401": {
+            "description": "Invalid or missing refresh token"
+          },
+          "403": {
+            "description": "Refresh token expired or reused"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Forgot password",
+        "description": "Sends a password reset OTP to the user's email.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully"
+          },
+          "400": {
+            "description": "Invalid email or user not found"
+          },
+          "429": {
+            "description": "Too many requests"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/verify-otp": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Verify OTP",
+        "description": "Verifies the OTP sent to the user's email.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "otp"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified successfully"
+          },
+          "400": {
+            "description": "Invalid OTP or email"
+          },
+          "410": {
+            "description": "OTP expired"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Reset password",
+        "description": "Resets the user's password using the verified token.",
+        "security": [
+          {
+            "csrfAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password", "confirmPassword"],
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "confirmPassword": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully"
+          },
+          "400": {
+            "description": "Passwords do not match or invalid input"
+          },
+          "401": {
+            "description": "Invalid or expired reset token"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": ["Auth APIs"],
+        "summary": "Change password",
+        "description": "Changes the user's password.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["currentPassword", "newPassword"],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "format": "password"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully"
+          },
+          "400": {
+            "description": "Invalid current password"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": ["Health APIs"],
+        "summary": "Check system status",
+        "description": "Returns a simple message indicating the server is running.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Server started successfully"
+          },
+          "500": {
+            "description": "Internal server error"
+          },
+          "503": {
+            "description": "Service unavailable"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health APIs"],
+        "summary": "Basic health check",
+        "description": "Checks the basic health of the application services.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Server is healthy"
+          },
+          "500": {
+            "description": "Internal server error"
+          },
+          "503": {
+            "description": "Service unavailable"
+          }
+        }
+      }
+    },
+    "/health/detailed": {
+      "get": {
+        "tags": ["Health APIs"],
+        "summary": "Detailed health check",
+        "description": "Provides a detailed health report including external dependencies.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Detailed health check completed"
+          },
+          "500": {
+            "description": "Internal server error"
+          },
+          "503": {
+            "description": "Service unavailable"
+          }
+        }
+      }
+    },
+    "/magic-link/login": {
+      "post": {
+        "tags": ["Magic Link APIs"],
+        "summary": "Login with Magic Link",
+        "description": "Sends a magic link to the user's email address. Optionally accepts an OIDC interaction UID.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "uid": {
+                    "type": "string",
+                    "description": "Optional OIDC interaction UID"
+                  },
+                  "redirectUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Magic link sent successfully"
+          },
+          "400": {
+            "description": "Invalid input data"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/magic-link/verify": {
+      "post": {
+        "tags": ["Magic Link APIs"],
+        "summary": "Verify Magic Link",
+        "description": "Verifies the magic link token and authenticates the user. Resumes OIDC flow if uid is present.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token"],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful or MFA required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "mfaRequired": {
+                      "type": "boolean"
+                    },
+                    "uid": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired token"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/mfa/setup": {
+      "post": {
+        "tags": ["Multi-factor Authentication"],
+        "summary": "Generate MFA setup",
+        "description": "Generates a QR code for setting up Multi-Factor Authentication.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MFA setup generated successfully"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/mfa/verify-setup": {
+      "post": {
+        "tags": ["Multi-factor Authentication"],
+        "summary": "Verify MFA setup",
+        "description": "Verifies the MFA setup using a code and returns backup codes.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MFA setup verified successfully"
+          },
+          "400": {
+            "description": "Invalid code"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/mfa/revoke": {
+      "post": {
+        "tags": ["Multi-factor Authentication"],
+        "summary": "Revoke MFA",
+        "description": "Revokes the MFA setup for the user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MFA revoked successfully"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/mfa/verify-login": {
+      "post": {
+        "tags": ["Multi-factor Authentication"],
+        "summary": "Verify MFA for login",
+        "description": "Verifies MFA code during login process.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login completed successfully"
+          },
+          "401": {
+            "description": "Invalid code or token or User not authenticated"
+          },
+          "403": {
+            "description": "MFA token expired"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/oauth/google": {
+      "get": {
+        "tags": ["OAuth APIs"],
+        "summary": "Initiate Google OAuth",
+        "description": "Redirects the user to Google for authentication. In Swagger UI, this can be triggered via the \"Authorize\" button if googleOAuth is configured.",
+        "security": [
+          {
+            "googleOAuth": ["openid", "profile", "email"]
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "redirectUrl",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Optional redirect URL to return to after login"
+          },
+          {
+            "in": "query",
+            "name": "uid",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional OIDC interaction UID"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to Google Login"
+          }
+        }
+      }
+    },
+    "/oauth/google/callback": {
+      "get": {
+        "tags": ["OAuth APIs"],
+        "summary": "Google OAuth callback",
+        "description": "Handles the callback from Google OAuth authentication.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "schema": {
+              "type": "string"
+            },
+            "description": "The authorization code returned by Google"
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "type": "string"
+            },
+            "description": "The state parameter for CSRF protection"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OAuth login successful, redirects to frontend"
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/oidc/interaction/{uid}": {
+      "get": {
+        "tags": ["OIDC APIs"],
+        "summary": "Get interaction details",
+        "description": "Retrieves details of an OIDC interaction. If a valid Direct API session exists (via `refreshToken` cookie), this endpoint automatically logs the user in (Session Bridge).",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Interaction UID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Interaction details retrieved successfully."
+          },
+          "400": {
+            "description": "Bad request - Invalid interaction."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/oidc/interaction/{uid}/login": {
+      "post": {
+        "tags": ["OIDC APIs"],
+        "summary": "Submit login interaction",
+        "description": "Submits user credentials for an OIDC login interaction. If MFA is enabled, it returns `mfaRequired: true`.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Interaction UID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful or MFA required."
+          },
+          "400": {
+            "description": "Bad request - Invalid credentials."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/oidc/interaction/{uid}/confirm": {
+      "post": {
+        "tags": ["OIDC APIs"],
+        "summary": "Confirm interaction",
+        "description": "Confirms an OIDC interaction (e.g., consent).",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Interaction UID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Interaction confirmed successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/oidc/interaction/{uid}/abort": {
+      "get": {
+        "tags": ["OIDC APIs"],
+        "summary": "Abort interaction",
+        "description": "Aborts an OIDC interaction.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Interaction UID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Interaction aborted successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/oidc/interaction/{uid}/mfa": {
+      "post": {
+        "tags": ["OIDC APIs"],
+        "summary": "Submit MFA for OIDC interaction",
+        "description": "Verifies MFA code and completes the OIDC login.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "uid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Interaction UID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "OTP code"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MFA verified and login successful."
+          },
+          "400": {
+            "description": "Invalid code."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/oidc/.well-known/openid-configuration": {
+      "get": {
+        "tags": ["OIDC Provider APIs"],
+        "summary": "OIDC Discovery Configuration",
+        "description": "Returns the OIDC Provider configuration and supported metadata.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Discovery configuration returned."
+          }
+        }
+      }
+    },
+    "/oidc/jwks": {
+      "get": {
+        "tags": ["OIDC Provider APIs"],
+        "summary": "JSON Web Key Set (JWKS)",
+        "description": "Returns the public keys used to verify tokens signed by this provider.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "JWKS returned."
+          }
+        }
+      }
+    },
+    "/oidc/auth": {
+      "get": {
+        "tags": ["OIDC Provider APIs"],
+        "summary": "OIDC Authorization Endpoint",
+        "description": "Starts the OIDC Authorization Code flow. Redirects to interaction endpoints if login/consent is needed.",
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "client_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "response_type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "redirect_uri",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirects to login, consent or redirect_uri."
+          }
+        }
+      }
+    },
+    "/oidc/token": {
+      "post": {
+        "tags": ["OIDC Provider APIs"],
+        "summary": "OIDC Token Endpoint",
+        "description": "Exchanges an Authorization Code for Access, Refresh, and ID Tokens.",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "grant_type": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "redirect_uri": {
+                    "type": "string"
+                  },
+                  "code_verifier": {
+                    "type": "string"
+                  },
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tokens returned successfully."
+          }
+        }
+      }
+    },
+    "/oidc/me": {
+      "get": {
+        "tags": ["OIDC Provider APIs"],
+        "summary": "OIDC UserInfo Endpoint",
+        "description": "Returns claims about the authenticated user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UserInfo returned successfully."
+          }
+        }
+      }
+    },
+    "/oidc/token/introspection": {
+      "post": {
+        "tags": ["OIDC Provider APIs"],
+        "summary": "Token Introspection",
+        "description": "Validates a token and returns its active state and meta-information.",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["token"],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token introspection results."
+          }
+        }
+      }
+    },
+    "/oidc/token/revocation": {
+      "post": {
+        "tags": ["OIDC Provider APIs"],
+        "summary": "Token Revocation",
+        "description": "Revokes a given token.",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["token"],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token revoked successfully."
+          }
+        }
+      }
+    },
+    "/session/": {
+      "get": {
+        "tags": ["Session APIs"],
+        "summary": "Get all active sessions",
+        "description": "Retrieves all active sessions for the current user using cursor-based pagination.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique session ID used as a cursor for pagination."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 100
+            },
+            "description": "The maximum number of sessions to return."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sessions retrieved successfully",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total count of active sessions."
+              },
+              "X-Page-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total number of pages available based on the limit."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "cursor": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "nextCursor": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "totalCount": {
+                              "type": "integer"
+                            },
+                            "totalPages": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Session APIs"],
+        "summary": "Revoke all other sessions",
+        "description": "Revokes all active sessions except the current one.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All other sessions revoked successfully"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/session/{sessionId}": {
+      "get": {
+        "tags": ["Session APIs"],
+        "summary": "Get session by ID",
+        "description": "Retrieves details of a specific session.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session retrieved successfully"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "404": {
+            "description": "Session not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Session APIs"],
+        "summary": "Revoke session by ID",
+        "description": "Revokes a specific session.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session revoked successfully"
+          },
+          "400": {
+            "description": "Cannot revoke current session"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "404": {
+            "description": "Session not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/user/me": {
+      "get": {
+        "tags": ["User APIs"],
+        "summary": "Get current user",
+        "description": "Retrieves the profile of the currently authenticated user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User retrieved successfully"
+          },
+          "401": {
+            "description": "User not authenticated"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "tags": []
+}

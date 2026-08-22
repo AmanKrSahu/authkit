@@ -14,10 +14,13 @@ AuthKit is a production-grade **Identity Provider (IdP)** and **Identity & Acces
 - [1. Project Abstract](#1-project-abstract)
 - [2. Technology Stack](#2-technology-stack)
 - [3. Developer Setup](#3-developer-setup)
-- [4. Core Architecture & Security Infrastructure](#4-core-architecture--security-infrastructure)
-- [5. OIDC Identity Provider (IdP) Implementation](#5-oidc-identity-provider-idp-implementation)
-- [6. API Inventory & Endpoint Specifications](#6-api-inventory--endpoint-specifications)
-- [7. Comprehensive Security, Performance & Feature Audit (July 2026)](#7-comprehensive-security-performance--feature-audit-july-2026)
+- [4. Automated Testing Suite & Quality Gates](#4-automated-testing-suite--quality-gates)
+  - [4.1 Automated Test Runners & CLI Commands](#41-automated-test-runners--cli-commands)
+  - [4.2 Postman Collection & Manual Testing Specifications](#42-postman-collection--manual-testing-specifications)
+- [5. Core Architecture & Security Infrastructure](#5-core-architecture--security-infrastructure)
+- [6. OIDC Identity Provider (IdP) Implementation](#6-oidc-identity-provider-idp-implementation)
+- [7. API Inventory & Endpoint Specifications](#7-api-inventory--endpoint-specifications)
+- [8. Comprehensive Security, Performance & Feature Audit (July 2026)](#8-comprehensive-security-performance--feature-audit-july-2026)
 
 ---
 
@@ -28,7 +31,7 @@ AuthKit is a production-grade **Identity Provider (IdP)** and **Identity & Acces
 - **Persistence**: PostgreSQL orchestrated via Prisma ORM
 - **State Store**: High-concurrency Redis instances (OIDC State & Session Caching)
 - **Validation**: Zod (Runtime Type Verification)
-- **Documentation**: Swagger / OpenAPI 3.0
+- **Documentation**: OpenAPI 3.0 / Swagger UI (Dev & Staging) & Postman Collection
 - **Orchestration**: Docker & Docker Compose
 - **Email Delivery**: Resend
 - **Cryptography**: Bcrypt (Hashing), Speakeasy (MFA/TOTP), RSA-256 (JWT/JWKS)
@@ -41,82 +44,138 @@ AuthKit is a production-grade **Identity Provider (IdP)** and **Identity & Acces
 
 **Prerequisites**: Docker & Docker Compose
 
-1.  **Clone Repository**:
+1. **Clone Repository**:
 
-    ```bash
-    git clone https://github.com/AmanKrSahu/authkit.git
-    ```
+   ```bash
+   git clone https://github.com/AmanKrSahu/authkit.git
+   ```
 
-2.  **Initialize the Environment Variables**:
+2. **Initialize the Environment Variables**:
 
-    ```bash
-    cp .env.example .env
-    ```
+   ```bash
+   cp .env.example .env
+   ```
 
-3.  **Generate secure tokens and JWKs**:
+3. **Generate secure tokens and JWKs**:
 
-    ```bash
-    # Populate .env with cryptographic primitives from generated-secrets.json
-    pnpm generate:secrets
-    ```
+   ```bash
+   # Populate .env with cryptographic primitives from generated-secrets.json
+   pnpm generate:secrets
+   ```
 
-4.  **Build and Run the Containers**:
+4. **Build and Run the Containers**:
 
-    ```bash
-    docker-compose -f docker-compose.dev.yml up --build -d
-    ```
+   ```bash
+   docker-compose -f docker-compose.dev.yml up --build -d
+   ```
 
 ### 3.2 Native Runtime Environment (Local)
 
 **Prerequisites**: Node.js (LTS), pnpm, PostgreSQL, Redis
 
-1.  **Dependency Resolution**:
+1. **Dependency Resolution**:
 
-    ```bash
-    pnpm install
-    ```
+   ```bash
+   pnpm install
+   ```
 
-2.  **Initialize the Environment Variables**:
+2. **Initialize the Environment Variables**:
 
-    ```bash
-    cp .env.example .env
-    ```
+   ```bash
+   cp .env.example .env
+   ```
 
-3.  **Generate secure tokens and JWKs**:
+3. **Generate secure tokens and JWKs**:
 
-    ```bash
-    # Populate .env with cryptographic primitives from generated-secrets.json
-    pnpm generate:secrets
-    ```
+   ```bash
+   # Populate .env with cryptographic primitives from generated-secrets.json
+   pnpm generate:secrets
+   ```
 
-4.  **Schema Migration & Seeding**:
+4. **Schema Migration & Seeding**:
 
-    ```bash
-    pnpm db:generate
-    pnpm db:push
-    # Optional: pnpm db:seed
-    ```
+   ```bash
+   pnpm db:generate
+   pnpm db:push
+   # Optional: pnpm db:seed
+   ```
 
-5.  **Run the Server**:
+5. **Run the Server**:
 
-    ```bash
-    pnpm dev
-    ```
+   ```bash
+   pnpm dev
+   ```
 
 ### 3.3 Access Vectors
 
-Depending on your configured environment (direct execution vs. behind Nginx):
+Depending on your configured environment (direct execution vs. behind Nginx reverse proxy):
 
-- **Local Dev API**: `http://localhost:8000/api/v1/`
-- **Local Dev Swagger Portal**: `http://localhost:8000/docs`
-- **Production API (behind Nginx)**: `http://localhost/api/v1/`
-- **Production Swagger Portal (behind Nginx)**: `http://localhost/docs`
+- **Local Dev API Base**: `http://localhost:8000/api/v1/`
+- **Swagger Documentation Portal (Dev/Staging)**: `http://localhost:8000/docs`
+- **Production Gateway API (behind Nginx)**: `https://localhost/api/v1/` (or `https://authkit.yourdomain.com/api/v1/`)
 
-👉 Full testing guide: [**Testing & Deployment Workflows**](./docs/testing-workflows.md)
+👉 Full testing guide: [**Testing Architecture & Deployment Workflows**](./docs/testing_architecture.md)
 
 ---
 
-## 4. Core Architecture & Security Infrastructure
+## 4. Automated Testing Suite & Quality Gates
+
+AuthKit includes a production-grade, three-layer automated testing suite designed using **Vitest**, **Supertest**, and modular in-memory data store mocks ([`tests/mocks/prisma.ts`](./tests/mocks/prisma.ts) and [`tests/mocks/redis.ts`](./tests/mocks/redis.ts)), executing **100% in-memory** out-of-the-box with zero external database dependencies. It is supplemented by a Postman collection for manual verification.
+
+For a detailed breakdown of the testing layout, coverage metrics, service mock setups, environment workflows, and execution paths, please refer to the [**Testing Architecture Documentation**](./docs/testing_architecture.md).
+
+### 4.1 Automated Test Runners & CLI Commands
+
+```bash
+# Run all tests (Unit, Integration, E2E)
+pnpm test
+
+# Run fast, in-memory Unit Tests
+pnpm test:unit
+
+# Run Integration Tests (Middlewares & Endpoints)
+pnpm test:integration
+
+# Run End-to-End User Journeys (OIDC, Credentials, MFA, Magic Link, Admin)
+pnpm test:e2e
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests with HTML coverage reports
+pnpm test:coverage
+```
+
+### 4.2 Postman Collection & Manual Testing Specifications
+
+To facilitate manual testing, production verification, and client integration independent of the automated test harness, AuthKit provides an exhaustive, pre-configured **Postman Collection** and **OpenAPI 3.0 Specification** inside the dedicated [`docs/api-specs/`](./docs/api-specs/) directory.
+
+#### Postman Collection (`docs/api-specs/AuthKit.postman_collection.json`)
+
+The collection is structured logically into workflow folders matching realistic customer journeys and edge cases:
+
+1. `01. Service Health & Diagnostics` (Base Status, Basic Health, Detailed System Diagnostics)
+2. `02. Authentication & Account Lifecycle` (Register, Verification, Login, Token Rotation, Logout, Lockouts, Forgot/Reset/Change Password)
+3. `03. Passwordless (Magic Link)` (Request Magic Link, Verify Magic Link Token)
+4. `04. Multi-Factor Authentication (MFA)` (TOTP Setup, Verify Setup, Login Challenge, Backup Code Recovery, Revoke MFA)
+5. `05. Social Authentication (OAuth 2.0)` (Google OAuth Redirect & Callback Handling)
+6. `06. User Profile Management` (Get Authenticated User Profile)
+7. `07. Session Management` (List Active Sessions Paginated, Session Details, Revoke Session by ID, Revoke All Other Sessions)
+8. `08. Admin Controls & Role Management` (Role Promotion, Query System Users, Delete User, Manage Target User Sessions, Register OIDC Clients)
+9. `09. OpenID Connect (OIDC 1.0) Provider Protocols` (Discovery, JWKS Keys, Authorization Code PKCE, Token Exchange, UserInfo, Introspection, Revocation)
+10. `10. OIDC Custom Interaction Flows` (Interaction Prompt Details, Session Bridge Check, Submit Login/MFA/Consent, Abort Interaction)
+
+**Features**:
+
+- Pre-configured environment variables (`{{baseUrl}}`, `{{accessToken}}`, `{{refreshToken}}`, `{{csrfToken}}`, `{{oidcClientId}}`, `{{oidcClientSecret}}`).
+- Built-in test scripts that automatically capture and set `accessToken`, `refreshToken`, and `csrfToken` into collection variables upon login.
+- Includes both standard happy paths and defensive edge cases (e.g. invalid tokens, rate limit triggers, unauthorized role attempts).
+
+👉 Direct Links: [**Postman Collection**](./docs/api-specs/AuthKit.postman_collection.json) | [**OpenAPI Specification**](./docs/api-specs/openapi.json)
+
+---
+
+## 5. Core Architecture & Security Infrastructure
 
 **Systemic Architecture**:
 The infrastructure adheres to a **Modular Layered Architecture (MLA)** utilizing the Controller-Service-Repository pattern. This ensures deterministic separation of concerns, facilitating high maintainability and vertical scalability. Core business logic is encapsulated within feature-isolated modules (Auth, Identity, Session Management).
@@ -139,7 +198,7 @@ The infrastructure adheres to a **Modular Layered Architecture (MLA)** utilizing
 
 👉 Full Documentation: [**Detailed Security Architecture**](./docs/security_architecture.md)
 
-### 4.1 Architectural Design Decisions Registry
+### 5.1 Architectural Design Decisions Registry
 
 To track and audit architectural decisions, we maintain a registry of design logs detailing critical security solutions:
 
@@ -151,7 +210,7 @@ To track and audit architectural decisions, we maintain a registry of design log
 
 ---
 
-## 5. OIDC Identity Provider (IdP) Implementation
+## 6. OIDC Identity Provider (IdP) Implementation
 
 AuthKit functions as a centralized IdP, supporting dynamic client registration and multi-phase authorization handshakes. The implementation conforms to strict **OpenID Connect 1.0** specifications.
 
@@ -160,7 +219,7 @@ AuthKit functions as a centralized IdP, supporting dynamic client registration a
 
 ---
 
-## 6. API Inventory & Endpoint Specifications
+## 7. API Inventory & Endpoint Specifications
 
 | Domain             | Functional Scope            | Protocol / Logic       | Details                                           |
 | :----------------- | :-------------------------- | :--------------------- | :------------------------------------------------ |
@@ -174,19 +233,19 @@ AuthKit functions as a centralized IdP, supporting dynamic client registration a
 | **System**         | Health & Dependency Checks  | Heartbeat Logic        | Multi-component dependency status monitoring      |
 | **Metadata**       | Discovery, Key Exposition   | RFC 8414               | Automated client configuration (Well-known)       |
 
-Comprehensive specifications including request/response schemas are accessible via the Swagger portal.
+Comprehensive specifications including request/response schemas are accessible via the Swagger portal (in Dev/Staging) or via the [**Postman Collection**](./docs/api-specs/AuthKit.postman_collection.json).
 
 👉 Full Documentation: [**API Endpoints Documentation**](./docs/api_endpoints.md)
 
 ---
 
-## 7. Comprehensive Security, Performance & Feature Audit (July 2026)
+## 8. Comprehensive Security, Performance & Feature Audit (July 2026)
 
 To elevate **AuthKit** from a robust side-project showcase to a **production-ready, enterprise-grade Identity Provider (IdP)** meeting global standards, a thorough engineering audit was performed. This audit systematically analyzed the codebase for cryptographic rigor, protocol compliance, bottleneck optimization, and enterprise scalability.
 
 All findings, remediations, and strategic feature additions have been structured into a master roadmap designed to prevent regressions and secure the platform's core trust base.
 
-### 7.1 Audit Artifacts & Findings
+### 8.1 Audit Artifacts & Findings
 
 The audit is broken down into specialized focus areas. You can review the exhaustive reports here:
 
@@ -195,43 +254,6 @@ The audit is broken down into specialized focus areas. You can review the exhaus
 - [**Performance & Scalability Audit (`performance.md`)**](./docs/audit/2026-07-20/performance.md) — Profiling query paths, database connection pooling, and latency-heavy transactions.
 - [**Enterprise Feature Recommendations (`feature-recommendations.md`)**](./docs/audit/2026-07-20/feature-recommendations.md) — Functional specifications for B2B multi-tenancy, passkeys, webhooks, and audit trails.
 - [**Supplementary Findings (`supplementary-findings.md`)**](./docs/audit/2026-07-20/supplementary-findings.md) — Additional architectural findings and recommendations discovered during the planning phase of the July 2026 security audit (specifically addressing proxy trust dynamics, header verification, and reverse-proxy deployments).
-
----
-
-### 7.2 Why This Audit?
-
-Modern IAM (Identity & Access Management) systems require zero-compromise security posture. The audit was conducted to:
-
-1.  **Harden Cryptographic Primitives**: Eliminate weak entropy, secure TOTP/MFA secrets, and enforce strict, cryptographically bound token states.
-2.  **Ensure Zero-Trust Defaults**: Upgrade session invalidation, CORS handling, and OAuth state verification.
-3.  **Optimize High-Concurrency Paths**: Remove expensive bottlenecks (e.g., Bcrypt execution blocking DB transactions) and introduce proper indices.
-4.  **Establish B2B/Enterprise Readiness**: Define clear milestones for Multi-Tenancy (Organizations), SAML/OIDC SSO, and Webhook dispatchers.
-
----
-
-### 7.3 Master Execution Roadmap
-
-The master tasks are sequenced into three distinct phases to manage risks and safeguard production stability:
-
-#### **Phase 1: Critical Fixes (Security-First & Immediate Deployment)**
-
-- **Token Binding**: Explicitly bind password-reset tokens to the payload email (resolving SEC-C1).
-- **SSO Hardening**: Address OIDC MFA bypasses during social SSO redirection.
-- **Secret Rotation & Vaulting**: Coordination of automated secret rotation policies (JWT keys, RSA keypairs) and moving credentials to a secrets manager.
-- **Strict CORS Policy**: Transition from loose substring matching to strict exact-origin allowlists.
-- **Session Revocation**: Real-time validation checks for JWT session cache revocation in Redis.
-
-#### **Phase 2: Stability & Performance**
-
-- **Testing Harness**: Setup automated integration testing with Vitest, Supertest, and Testcontainers.
-- **High-ROI DB Optimizations**: Add composite indexes on session tables and decouple slow hashing operations from atomic database transactions.
-- **Observability**: Integrate Prometheus metrics (`/metrics`), tracing headers, and standard audit logs.
-
-#### **Phase 3: Modernization & Enterprise Features**
-
-- **Passwordless (Passkeys)**: Deploy WebAuthn-based biometrics.
-- **Multi-Tenancy**: Introduce logical Organization partitioning.
-- **Enterprise Integration**: Enable SAML 2.0 / OIDC RP federation and transactional Webhooks.
 
 For details on individual ticket tracking, metrics, and exit criteria, refer directly to the [**Master Execution Roadmap (`task.md`)**](./docs/audit/2026-07-20/task.md).
 
