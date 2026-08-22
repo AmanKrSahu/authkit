@@ -64,19 +64,19 @@ Goal: harden the medium-risk surface, add the safety net (tests, monitoring), an
 | 2.18  | Paginate `getAllUsers`/`getSessions` (Cursor-based pagination)                                 | perf M-1         | P2       | M          | Bounded admin payloads at scale                        | **Done** |
 | 2.19  | Tune Redis client resilience + Prisma pool sizing/timeouts                                     | perf QW-7/LT-3   | P2       | S          | Predictable behavior under load                        | **Done** |
 | 2.20  | Fix/simplify `getSessionById` cache path; drop redundant pre-fetches                           | perf M-2/M-3     | P3       | S          | Fewer wasted round-trips                               | **Done** |
-| 2.21  | Cache `getAppVersion`; build/Docker/logger tuning                                              | perf QW-8/LT-4–6 | P3       | M          | Smaller image, lower logging overhead                  | Todo     |
-| 2.21a | Optimize dev compose start by gating `db:push` & hardening bind mounts                         | perf M-4/SEC-L10 | P3       | S          | Instant dev startup, secure env isolation              | Todo     |
-| 2.21b | Configure Nginx reverse proxy template with HTTP/2 and Brotli compression                      | perf LT-1/LT-2   | P3       | S          | Modern protocol support & fast asset compression       | Todo     |
+| 2.21  | Cache `getAppVersion`; build/Docker/logger tuning                                              | perf QW-8/LT-4–6 | P3       | M          | Smaller image, lower logging overhead                  | **Done** |
+| 2.21a | Optimize dev compose start by gating `db:push` & hardening bind mounts                         | perf M-4/SEC-L10 | P3       | S          | Instant dev startup, secure env isolation              | **Done** |
+| 2.21b | Configure Nginx reverse proxy template with HTTP/2 and Brotli compression                      | perf LT-1/LT-2   | P3       | S          | Modern protocol support & fast asset compression       | **Done** |
 
 ### 2C — Safety net & operability
 
-| #    | Task                                                                     | Source       | Priority | Complexity | Dependencies | Status |
-| ---- | ------------------------------------------------------------------------ | ------------ | -------- | ---------- | ------------ | ------ |
-| 2.22 | **Automated test suite** (vitest + supertest + Testcontainers) + CI      | FR-1         | P1       | L          | none         | Todo   |
-| 2.23 | **Audit logs** (`AuditLog` model + `AuditService` + `/admin/audit-logs`) | FR-2         | P1       | M          | none         | Todo   |
-| 2.24 | **Real dependency health checks** (`/health/live`, `/health/ready`)      | FR-8         | P2       | S          | none         | Todo   |
-| 2.25 | **Observability** (`prom-client` `/metrics`, request IDs, optional OTel) | FR-7         | P2       | M          | none         | Todo   |
-| 2.26 | Reconcile docs vs. code (rate-limit numbers, PPI)                        | FR Section 4 | P3       | S          | none         | Todo   |
+| #    | Task                                                                     | Source       | Priority | Complexity | Dependencies | Status   |
+| ---- | ------------------------------------------------------------------------ | ------------ | -------- | ---------- | ------------ | -------- |
+| 2.22 | **Automated test suite** (vitest + supertest + Testcontainers) + CI      | FR-1         | P1       | L          | none         | **Done** |
+| 2.23 | **Audit logs** (`AuditLog` model + `AuditService` + `/admin/audit-logs`) | FR-2         | P1       | M          | none         | Todo     |
+| 2.24 | **Real dependency health checks** (`/health/live`, `/health/ready`)      | FR-8         | P2       | S          | none         | Todo     |
+| 2.25 | **Observability** (`prom-client` `/metrics`, request IDs, optional OTel) | FR-7         | P2       | M          | none         | Todo     |
+| 2.26 | Reconcile docs vs. code (rate-limit numbers, PPI)                        | FR Section 4 | P3       | S          | none         | Todo     |
 
 **Phase 2 exit criteria:** all Medium findings resolved; test coverage on auth/mfa/oidc flows in CI; metrics + real health checks live; performance indexes migrated.
 

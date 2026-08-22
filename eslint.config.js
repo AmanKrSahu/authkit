@@ -109,7 +109,16 @@ const eslintConfig = [
 
   // Ignore patterns
   {
-    ignores: ['node_modules/**', 'dist/**', 'build/**', 'coverage/**', '*.min.js', '*.bundle.js'],
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      'coverage/**',
+      '*.min.js',
+      '*.bundle.js',
+      'tests/**',
+      'vitest.config.ts',
+    ],
   },
 ];
 

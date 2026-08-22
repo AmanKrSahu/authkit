@@ -57,9 +57,9 @@ export const setupJwtStrategy = (passport: PassportStatic) => {
         });
 
         if (
-          !session ||
-          session.userId !== payload.userId ||
-          session.isRevoked ||
+          session?.userId !== payload.userId ||
+          session?.isRevoked ||
+          !session?.expiresAt ||
           session.expiresAt < new Date()
         ) {
           return done(null, false);
