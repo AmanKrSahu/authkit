@@ -17,15 +17,22 @@ import { sanitizeUser } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
-import type { EmailService } from '@core/mailers/resend';
+import { EmailService } from '@core/mailers/resend';
+import { AuditAction, AuditStatus } from '@prisma/client';
 
 import { RATE_LIMIT } from '../../../core/common/constants/rate-limit.constant';
+import { AuditService } from './audit.service';
 
 export class MagicLinkService {
   private emailService: EmailService;
+  private auditService: AuditService;
 
-  constructor(emailService: EmailService) {
+  constructor(
+    emailService: EmailService = new EmailService(),
+    auditService: AuditService = new AuditService()
+  ) {
     this.emailService = emailService;
+    this.auditService = auditService;
   }
 
   public async login(magicLinkLoginData: MagicLinkLoginData) {
@@ -164,6 +171,17 @@ export class MagicLinkService {
       );
 
       await deleteCache(`magic_link:${token}`);
+
+      await this.auditService.log({
+        userId: user.id,
+        action: AuditAction.LOGIN,
+        entityType: 'User',
+        entityId: user.id,
+        description: 'User logged in via Magic Link',
+        status: AuditStatus.SUCCESS,
+        ipAddress,
+        userAgent,
+      });
 
       const { ...userInfo } = user;
 

@@ -6,8 +6,9 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { prismaMock } from '@tests/mocks/prisma';
 import { redisMock } from '@tests/mocks/redis';
-import { MockEmailService } from '@tests/mocks/resend';
 import { OAuthService } from '@api/v1/services/oauth.service';
+import { MockAuditService } from '@tests/mocks/audit';
+import { MockEmailService } from '@tests/mocks/resend';
 import { BadRequestException } from '@core/common/utils/app-error';
 
 // Mock Prisma adapter globally
@@ -17,12 +18,14 @@ vi.mock('@core/database/prisma', () => ({
 
 describe('OAuthService Unit Tests', () => {
   let mockEmailService: MockEmailService;
+  let mockAuditService: MockAuditService;
   let oauthService: OAuthService;
 
   beforeEach(() => {
     redisMock.flushall();
     mockEmailService = new MockEmailService();
-    oauthService = new OAuthService(mockEmailService as any);
+    mockAuditService = new MockAuditService();
+    oauthService = new OAuthService(mockEmailService as any, mockAuditService as any);
   });
 
   describe('loginWithGoogle', () => {

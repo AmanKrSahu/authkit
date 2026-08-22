@@ -7,6 +7,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { prismaMock } from '@tests/mocks/prisma';
 import { redisMock } from '@tests/mocks/redis';
 import { SessionService } from '@api/v1/services/session.service';
+import { MockAuditService } from '@tests/mocks/audit';
 import { NotFoundException, AppError } from '@core/common/utils/app-error';
 import { signJwtToken, refreshTokenSignOptions } from '@core/common/utils/jwt';
 
@@ -19,7 +20,8 @@ vi.mock('@core/database/prisma', () => ({
 }));
 
 describe('SessionService Unit Tests', () => {
-  const sessionService = new SessionService();
+  const mockAuditService = new MockAuditService();
+  const sessionService = new SessionService(mockAuditService as any);
 
   beforeEach(() => {
     redisMock.flushall();

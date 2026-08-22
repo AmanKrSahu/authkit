@@ -96,3 +96,51 @@ model OidcClient {
 
   @@map("oidc_client")
 }
+
+// =====================================================
+// AUDIT LOGGING
+// =====================================================
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  FAILED_LOGIN
+  PASSWORD_CHANGE
+  PASSWORD_RESET
+  MFA_ENABLE
+  MFA_DISABLE
+  USER_CREATE
+  USER_UPDATE
+  USER_DELETE
+  ROLE_CHANGE
+  OIDC_CLIENT_CREATE
+  SESSION_REVOKE
+  OTHER
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  userId      String?
+  action      AuditAction
+  entityType  String
+  entityId    String?
+  description String
+  status      AuditStatus @default(SUCCESS)
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+
+  @@map("audit_log")
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([status])
+}
+

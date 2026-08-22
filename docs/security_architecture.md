@@ -183,6 +183,15 @@ To ensure continuous system availability under high concurrency and prevent casc
 - **Redis Client Resilience**: The cache client operates with exponential connection retry backoffs and explicit connection timeouts, preventing process crashes on temporary network drops.
 - **Batch Cache Invalidation**: Multi-key cache revocations are executed in a single network round-trip batch command (`deleteCacheMany`), neutralizing performance degradation during mass logouts.
 
+### 2.16. SOC2 & NIST SP 800-92 Compliance Audit Logging
+
+To satisfy enterprise compliance requirements (SOC2 Type II, HIPAA, NIST SP 800-92), AuthKit maintains an append-only security audit log system:
+
+- **Append-Only & Read-Only Policy**: Audit log records are strictly append-only. There are zero API endpoints or service methods available to update, modify, or delete audit records through normal application interfaces.
+- **Recursive Metadata Secret Redaction**: Before persisting audit log metadata to PostgreSQL, `AuditService.sanitizeMetadata()` recursively scans all nested JSON fields and automatically redacts sensitive keys (`password`, `secret`, `token`, `accessToken`, `refreshToken`, `apiKey`, `backupCodes`, `authorization`, `cookie`) with `[REDACTED]`.
+- **RBAC Gated Access**: Access to audit logs (`GET /admin/audit-logs` and `GET /admin/audit-logs/:id`) is strictly restricted to authenticated users with `Role.ADMIN`.
+- **Non-Blocking Resilience**: Audit log logging operates asynchronously with isolated error catching, ensuring that database or logging glitches never block or crash primary user authentication transactions.
+
 ---
 
 ## 3. The Role of Redis

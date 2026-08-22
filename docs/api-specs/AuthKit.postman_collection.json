@@ -746,6 +746,34 @@
             },
             "description": "Registers a new OIDC client application and generates credentials."
           }
+        },
+        {
+          "name": "List Audit Logs (Paginated & Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs?limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "audit-logs"],
+              "query": [{ "key": "limit", "value": "100" }]
+            },
+            "description": "Queries security audit logs with cursor-based pagination and filtering by action, status, userId, or date ranges."
+          }
+        },
+        {
+          "name": "Get Audit Log Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "audit-logs", ":id"],
+              "variable": [{ "key": "id", "value": "audit_log_id_here" }]
+            },
+            "description": "Retrieves audit log details by log ID with sensitive metadata fields redacted."
+          }
         }
       ]
     },

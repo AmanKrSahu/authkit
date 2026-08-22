@@ -17,10 +17,10 @@ export class OidcController {
   private sessionService: SessionService;
 
   constructor(
-    oidcService: OidcService,
-    authService: AuthService,
-    mfaService: MfaService,
-    sessionService: SessionService
+    oidcService: OidcService = new OidcService(),
+    authService: AuthService = new AuthService(),
+    mfaService: MfaService = new MfaService(),
+    sessionService: SessionService = new SessionService()
   ) {
     this.oidcService = oidcService;
     this.authService = authService;

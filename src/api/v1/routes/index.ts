@@ -5,7 +5,9 @@ import helmet from 'helmet';
 
 import { oidcRateLimiter } from '../middlewares/rate-limiter.middleware';
 import { roleGuard } from '../middlewares/role.middleware';
-import { oidcService } from '../modules/oidc.module';
+import { OidcService } from '../services/oidc.service';
+
+const oidcService = new OidcService();
 import adminRoutes from './admin.routes';
 import authRoutes from './auth.routes';
 import healthRoutes from './health.routes';

@@ -13,6 +13,7 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
     session: new Map(),
     account: new Map(),
     oidcClient: new Map(),
+    auditLog: new Map(),
   };
 
   const getModelStore = (modelName: string) => {
@@ -104,6 +105,14 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
       if (args?.where) {
         list = list.filter(item => {
           for (const [k, v] of Object.entries(args.where)) {
+            if (v === undefined) continue;
+            if (k === 'createdAt' && typeof v === 'object' && v !== null) {
+              const itemTime = new Date(item.createdAt).getTime();
+              const { gte, lte } = v as any;
+              if (gte && itemTime < new Date(gte).getTime()) return false;
+              if (lte && itemTime > new Date(lte).getTime()) return false;
+              continue;
+            }
             if (item[k] !== v) return false;
           }
           return true;
@@ -205,7 +214,27 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
       }
       return { count };
     },
-    count: async () => getModelStore(modelName).size,
+    count: async (args?: any) => {
+      const mStore = getModelStore(modelName);
+      let list = [...mStore.values()];
+      if (args?.where) {
+        list = list.filter(item => {
+          for (const [k, v] of Object.entries(args.where)) {
+            if (v === undefined) continue;
+            if (k === 'createdAt' && typeof v === 'object' && v !== null) {
+              const itemTime = new Date(item.createdAt).getTime();
+              const { gte, lte } = v as any;
+              if (gte && itemTime < new Date(gte).getTime()) return false;
+              if (lte && itemTime > new Date(lte).getTime()) return false;
+              continue;
+            }
+            if (item[k] !== v) return false;
+          }
+          return true;
+        });
+      }
+      return list.length;
+    },
   });
 
   const mockClient = {
@@ -213,6 +242,7 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
     session: createModelMock('session'),
     account: createModelMock('account'),
     oidcClient: createModelMock('oidcClient'),
+    auditLog: createModelMock('auditLog'),
     $transaction: async (cb: any) => {
       if (typeof cb === 'function') {
         return await cb(mockClient);

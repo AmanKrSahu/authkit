@@ -17,9 +17,17 @@ import { deleteCache, deleteCacheMany } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
-import { Prisma, Role } from '@prisma/client';
+import { AuditAction, AuditStatus, Prisma, Role } from '@prisma/client';
+
+import { AuditService } from './audit.service';
 
 export class AdminService {
+  private auditService: AuditService;
+
+  constructor(auditService: AuditService = new AuditService()) {
+    this.auditService = auditService;
+  }
+
   public async promoteUserToAdmin(promoteUserToAdminData: PromoteUserToAdminData) {
     try {
       const { userId } = promoteUserToAdminData;
@@ -42,6 +50,15 @@ export class AdminService {
         `active_refresh_token:${session.id}`,
       ]);
       await deleteCacheMany(cacheKeys);
+
+      await this.auditService.log({
+        action: AuditAction.ROLE_CHANGE,
+        entityType: 'User',
+        entityId: userId,
+        description: `User ${updatedUser.email} promoted to ADMIN`,
+        status: AuditStatus.SUCCESS,
+        metadata: { newRole: 'ADMIN' },
+      });
 
       return sanitizeUser(updatedUser);
     } catch (error) {
@@ -81,6 +98,14 @@ export class AdminService {
       ]);
       await deleteCacheMany(cacheKeys);
 
+      await this.auditService.log({
+        action: AuditAction.USER_DELETE,
+        entityType: 'User',
+        entityId: userId,
+        description: `User account ${userId} deleted by admin`,
+        status: AuditStatus.SUCCESS,
+      });
+
       return null;
     } catch (error) {
       if (error instanceof AppError) {
@@ -109,6 +134,14 @@ export class AdminService {
 
       await deleteCache(`session:${sessionId}`);
       await deleteCache(`active_refresh_token:${sessionId}`);
+
+      await this.auditService.log({
+        action: AuditAction.SESSION_REVOKE,
+        entityType: 'Session',
+        entityId: sessionId,
+        description: `Session ${sessionId} revoked by admin`,
+        status: AuditStatus.SUCCESS,
+      });
 
       return null;
     } catch (error) {
@@ -153,6 +186,14 @@ export class AdminService {
       ]);
       await deleteCacheMany(cacheKeys);
 
+      await this.auditService.log({
+        action: AuditAction.SESSION_REVOKE,
+        entityType: 'Session',
+        description: `All active sessions for user ${userId} revoked by admin`,
+        status: AuditStatus.SUCCESS,
+        metadata: { userId },
+      });
+
       return null;
     } catch (error) {
       if (error instanceof AppError) {
@@ -179,6 +220,15 @@ export class AdminService {
           grantTypes,
           scope,
         },
+      });
+
+      await this.auditService.log({
+        action: AuditAction.OIDC_CLIENT_CREATE,
+        entityType: 'OidcClient',
+        entityId: oidcClient.id,
+        description: `OIDC Client registered: ${oidcClient.clientName}`,
+        status: AuditStatus.SUCCESS,
+        metadata: { clientId: oidcClient.clientId, clientName: oidcClient.clientName },
       });
 
       return {

@@ -1,7 +1,9 @@
 import { Router } from 'express';
 
+import { MagicLinkController } from '../controllers/magic-link.controller';
 import { authRateLimiter } from '../middlewares/rate-limiter.middleware';
-import { magicLinkController } from '../modules/magic-link.module';
+
+const magicLinkController = new MagicLinkController();
 
 const magicLinkRoutes = Router();
 

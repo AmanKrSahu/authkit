@@ -13,8 +13,16 @@ import { deleteCache, deleteCacheMany, getCache } from '@core/common/utils/redis
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
+import { AuditAction, AuditStatus } from '@prisma/client';
+
+import { AuditService } from './audit.service';
 
 export class SessionService {
+  private auditService: AuditService;
+
+  constructor(auditService: AuditService = new AuditService()) {
+    this.auditService = auditService;
+  }
   public async getSessions(sessionData: SessionData) {
     try {
       const { userId, cursor, limit } = sessionData;
@@ -134,6 +142,14 @@ export class SessionService {
       ]);
       await deleteCacheMany(cacheKeys);
 
+      await this.auditService.log({
+        userId,
+        action: AuditAction.SESSION_REVOKE,
+        entityType: 'Session',
+        description: 'All other active sessions revoked by user',
+        status: AuditStatus.SUCCESS,
+      });
+
       return null;
     } catch (error) {
       if (error instanceof AppError) {
@@ -165,6 +181,15 @@ export class SessionService {
 
       await deleteCache(`session:${sessionId}`);
       await deleteCache(`active_refresh_token:${sessionId}`);
+
+      await this.auditService.log({
+        userId,
+        action: AuditAction.SESSION_REVOKE,
+        entityType: 'Session',
+        entityId: sessionId,
+        description: `Session ${sessionId} revoked by user`,
+        status: AuditStatus.SUCCESS,
+      });
 
       return null;
     } catch (error) {
@@ -206,6 +231,16 @@ export class SessionService {
         });
         await deleteCache(`session:${session.id}`);
         await deleteCache(`active_refresh_token:${session.id}`);
+
+        await this.auditService.log({
+          userId: session.userId,
+          action: AuditAction.SESSION_REVOKE,
+          entityType: 'Session',
+          entityId: session.id,
+          description: 'Session revoked due to detected refresh token reuse / replay attack',
+          status: AuditStatus.FAILURE,
+        });
+
         return null;
       }
 

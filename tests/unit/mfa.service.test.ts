@@ -7,6 +7,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { prismaMock } from '@tests/mocks/prisma';
 import { redisMock } from '@tests/mocks/redis';
 import { MfaService } from '@api/v1/services/mfa.service';
+import { MockAuditService } from '@tests/mocks/audit';
+import { MockEmailService } from '@tests/mocks/resend';
 import { BadRequestException, UnauthorizedException } from '@core/common/utils/app-error';
 import { encrypt } from '@core/common/utils/crypto';
 import { signJwtToken, mfaTokenSignOptions } from '@core/common/utils/jwt';
@@ -19,27 +21,23 @@ vi.mock('@core/database/prisma', () => ({
 }));
 
 // Mock EmailService globally so that MfaService instantiates the mock
-vi.mock('@core/mailers/resend', () => {
-  class MockEmailService {
-    sendMagicLink = vi.fn().mockResolvedValue(null);
-    sendEmailVerification = vi.fn().mockResolvedValue(null);
-    sendWelcomeEmail = vi.fn().mockResolvedValue(null);
-    sendPasswordResetOTP = vi.fn().mockResolvedValue(null);
-    sendPasswordChangeConfirmation = vi.fn().mockResolvedValue(null);
-    sendNewDeviceNotification = vi.fn().mockResolvedValue(null);
-  }
-
+vi.mock('@core/mailers/resend', async () => {
+  const { MockEmailService } = await import('@tests/mocks/resend');
   return {
     EmailService: MockEmailService,
   };
 });
 
 describe('MfaService Unit Tests', () => {
+  let mockEmailService: MockEmailService;
+  let mockAuditService: MockAuditService;
   let mfaService: MfaService;
 
   beforeEach(() => {
     redisMock.flushall();
-    mfaService = new MfaService();
+    mockEmailService = new MockEmailService();
+    mockAuditService = new MockAuditService();
+    mfaService = new MfaService(mockEmailService as any, mockAuditService as any);
   });
 
   describe('generateMFASetup', () => {

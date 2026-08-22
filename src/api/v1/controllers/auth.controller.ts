@@ -29,7 +29,7 @@ import { AuthService } from '../services/auth.service';
 export class AuthController {
   private authService: AuthService;
 
-  constructor(authService: AuthService) {
+  constructor(authService: AuthService = new AuthService()) {
     this.authService = authService;
   }
 

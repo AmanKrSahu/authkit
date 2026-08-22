@@ -503,6 +503,30 @@ _Note: The email address is no longer supplied in the request body; the identity
 }
 ```
 
+### 7.6. List Audit Logs
+
+- **Route**: `GET /admin/audit-logs`
+- **Description**: Returns a paginated list of security audit logs. Supports filtering by `userId`, `action`, `entityType`, `entityId`, `status`, `startDate`, and `endDate`.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+**Query Parameters**:
+
+- `cursor` (string, optional): Pagination cursor ID.
+- `limit` (number, optional): Page limit.
+- `userId` (string, optional): Filter by actor user ID.
+- `action` (string, optional): Filter by `AuditAction` enum.
+- `entityType` (string, optional): Filter by resource type (e.g. `User`, `Session`, `OidcClient`).
+- `entityId` (string, optional): Filter by target resource ID.
+- `status` (string, optional): Filter by `SUCCESS` or `FAILURE`.
+- `startDate` (string, optional): ISO start date timestamp.
+- `endDate` (string, optional): ISO end date timestamp.
+
+### 7.7. Get Audit Log Details
+
+- **Route**: `GET /admin/audit-logs/:id`
+- **Description**: Returns full audit log details for a single log entry. Sensitive metadata values are automatically redacted.
+- **Security**: Admin Only (`Role.ADMIN`)
+
 ---
 
 ## 8. OpenID Connect (OIDC) (`/oidc`)

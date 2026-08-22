@@ -5,7 +5,9 @@ import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { Router } from 'express';
 import passport from 'passport';
 
-import { oauthController } from '../modules/oauth.module';
+import { OAuthController } from '../controllers/oauth.controller';
+
+const oauthController = new OAuthController();
 
 const oauthRoutes = Router();
 

@@ -7,17 +7,27 @@ import {
   revokeSessionByIdSchema,
   revokeSessionsByUserIdSchema,
 } from '@core/common/validators/admin.validator';
+import {
+  getAuditLogByIdSchema,
+  getAuditLogsQuerySchema,
+} from '@core/common/validators/audit.validator';
 import { HTTPSTATUS } from '@core/config/http.config';
 import { AsyncHandler } from '@core/decorator/async-handler.decorator';
 import type { Request, Response } from 'express';
 
 import { AdminService } from '../services/admin.service';
+import { AuditService } from '../services/audit.service';
 
 export class AdminController {
   private adminService: AdminService;
+  private auditService: AuditService;
 
-  constructor(adminService: AdminService) {
+  constructor(
+    adminService: AdminService = new AdminService(),
+    auditService: AuditService = new AuditService()
+  ) {
     this.adminService = adminService;
+    this.auditService = auditService;
   }
 
   @AsyncHandler
@@ -140,6 +150,38 @@ export class AdminController {
         sessions,
         pagination,
       },
+    });
+  };
+
+  @AsyncHandler
+  public getAuditLogs = async (req: Request, res: Response) => {
+    const query = getAuditLogsQuerySchema.parse({ ...req.query });
+
+    const { auditLogs, pagination } = await this.auditService.getAuditLogs(query);
+
+    res.setHeader('X-Total-Count', pagination.totalCount.toString());
+    res.setHeader('X-Page-Count', pagination.totalPages.toString());
+
+    return res.status(HTTPSTATUS.OK).json({
+      success: true,
+      message: 'Audit logs retrieved successfully',
+      data: {
+        auditLogs,
+        pagination,
+      },
+    });
+  };
+
+  @AsyncHandler
+  public getAuditLogById = async (req: Request, res: Response) => {
+    const { id } = getAuditLogByIdSchema.parse({ ...req.params });
+
+    const auditLog = await this.auditService.getAuditLogById(id);
+
+    return res.status(HTTPSTATUS.OK).json({
+      success: true,
+      message: 'Audit log details retrieved successfully',
+      data: { auditLog },
     });
   };
 }

@@ -73,7 +73,7 @@ Goal: harden the medium-risk surface, add the safety net (tests, monitoring), an
 | #    | Task                                                                     | Source       | Priority | Complexity | Dependencies | Status   |
 | ---- | ------------------------------------------------------------------------ | ------------ | -------- | ---------- | ------------ | -------- |
 | 2.22 | **Automated test suite** (vitest + supertest + Testcontainers) + CI      | FR-1         | P1       | L          | none         | **Done** |
-| 2.23 | **Audit logs** (`AuditLog` model + `AuditService` + `/admin/audit-logs`) | FR-2         | P1       | M          | none         | Todo     |
+| 2.23 | **Audit logs** (`AuditLog` model + `AuditService` + `/admin/audit-logs`) | FR-2         | P1       | M          | none         | **Done** |
 | 2.24 | **Real dependency health checks** (`/health/live`, `/health/ready`)      | FR-8         | P2       | S          | none         | Todo     |
 | 2.25 | **Observability** (`prom-client` `/metrics`, request IDs, optional OTel) | FR-7         | P2       | M          | none         | Todo     |
 | 2.26 | Reconcile docs vs. code (rate-limit numbers, PPI)                        | FR Section 4 | P3       | S          | none         | Todo     |
