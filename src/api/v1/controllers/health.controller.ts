@@ -2,12 +2,12 @@ import { HTTPSTATUS } from '@core/config/http.config';
 import { AsyncHandler } from '@core/decorator/async-handler.decorator';
 import type { Request, Response } from 'express';
 
-import type { HealthService } from '../services/health.service';
+import { HealthService } from '../services/health.service';
 
 export class HealthController {
   private healthService: HealthService;
 
-  constructor(healthService: HealthService) {
+  constructor(healthService: HealthService = new HealthService()) {
     this.healthService = healthService;
   }
 

@@ -158,10 +158,10 @@ The collection is structured logically into workflow folders matching realistic 
 2. `02. Authentication & Account Lifecycle` (Register, Verification, Login, Token Rotation, Logout, Lockouts, Forgot/Reset/Change Password)
 3. `03. Passwordless (Magic Link)` (Request Magic Link, Verify Magic Link Token)
 4. `04. Multi-Factor Authentication (MFA)` (TOTP Setup, Verify Setup, Login Challenge, Backup Code Recovery, Revoke MFA)
-5. `05. Social Authentication (OAuth 2.0)` (Google OAuth Redirect & Callback Handling)
-6. `06. User Profile Management` (Get Authenticated User Profile)
-7. `07. Session Management` (List Active Sessions Paginated, Session Details, Revoke Session by ID, Revoke All Other Sessions)
-8. `08. Admin Controls & Role Management` (Role Promotion, Query System Users, Delete User, Manage Target User Sessions, Register OIDC Clients)
+5. `05. OAuth 2.0 (Google)` (Google OAuth Redirect, Google OAuth Callback)
+6. `06. User & Session Management` (Profile Info, Paginated Session Listing, Revoke Single Session, Revoke All Other Sessions)
+7. `07. Admin Operations` (Promote User, Delete Account, Revoke Target Sessions, Register OIDC Client, Paginated User Queries, Paginated Audit Logs, Audit Log Details)
+8. `08. Webhook & Event System` (Create Webhook Subscription, List Subscriptions, Get Details, Update Config, Rotate Signing Secret, Trigger Test Delivery, List Deliveries, Get Delivery Details)
 9. `09. OpenID Connect (OIDC 1.0) Provider Protocols` (Discovery, JWKS Keys, Authorization Code PKCE, Token Exchange, UserInfo, Introspection, Revocation)
 10. `10. OIDC Custom Interaction Flows` (Interaction Prompt Details, Session Bridge Check, Submit Login/MFA/Consent, Abort Interaction)
 
@@ -221,17 +221,18 @@ AuthKit functions as a centralized IdP, supporting dynamic client registration a
 
 ## 7. API Inventory & Endpoint Specifications
 
-| Domain             | Functional Scope            | Protocol / Logic       | Details                                           |
-| :----------------- | :-------------------------- | :--------------------- | :------------------------------------------------ |
-| **Identity (IdP)** | Auth, Token, JWKS, UserInfo | OIDC 1.0 / OAuth 2.0   | Centralized SSO & Third-party provisioning        |
-| **Auth**           | Registration, Login, Logout | Password-based Auth    | Secure credential handling & session initiation   |
-| **MFA**            | TOTP Setup & Verification   | RFC 6238 (speakeasy)   | Multi-factor secondary verification layer         |
-| **OAuth**          | Google Social Integration   | OAuth 2.0 Protocol     | Third-party identity federation                   |
-| **Magic Link**     | Passwordless Auth           | Token-based / SMTP     | Email-verified session provisioning               |
-| **User/Session**   | Profile & Active State Mgmt | REST / Redis-backed    | Real-time session tracking & profile modification |
-| **Admin**          | Moderation & Client Ops     | Restricted REST / RBAC | User lifecycle moderation & Client Registration   |
-| **System**         | Health & Dependency Checks  | Heartbeat Logic        | Multi-component dependency status monitoring      |
-| **Metadata**       | Discovery, Key Exposition   | RFC 8414               | Automated client configuration (Well-known)       |
+| Domain             | Functional Scope            | Protocol / Logic       | Details                                               |
+| :----------------- | :-------------------------- | :--------------------- | :---------------------------------------------------- |
+| **Identity (IdP)** | Auth, Token, JWKS, UserInfo | OIDC 1.0 / OAuth 2.0   | Centralized SSO & Third-party provisioning            |
+| **Auth**           | Registration, Login, Logout | Password-based Auth    | Secure credential handling & session initiation       |
+| **MFA**            | TOTP Setup & Verification   | RFC 6238 (speakeasy)   | Multi-factor secondary verification layer             |
+| **OAuth**          | Google Social Integration   | OAuth 2.0 Protocol     | Third-party identity federation                       |
+| **Magic Link**     | Passwordless Auth           | Token-based / SMTP     | Email-verified session provisioning                   |
+| **User/Session**   | Profile & Active State Mgmt | REST / Redis-backed    | Real-time session tracking & profile modification     |
+| **Admin**          | Moderation & Client Ops     | Restricted REST / RBAC | User lifecycle moderation & Client Registration       |
+| **Audit Logs**     | Compliance & Observability  | SOC2 / NIST SP 800-92  | Append-only security audit trail & filterable queries |
+| **System**         | Health & Dependency Checks  | Heartbeat Logic        | Multi-component dependency status monitoring          |
+| **Metadata**       | Discovery, Key Exposition   | RFC 8414               | Automated client configuration (Well-known)           |
 
 Comprehensive specifications including request/response schemas are accessible via the Swagger portal (in Dev/Staging) or via the [**Postman Collection**](./docs/api-specs/AuthKit.postman_collection.json).
 

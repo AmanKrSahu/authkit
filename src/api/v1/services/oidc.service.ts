@@ -1,3 +1,4 @@
+import type { ConsentDetail } from '@core/common/interface/oidc.interface';
 import { AppError } from '@core/common/utils/app-error';
 import { comparePassword } from '@core/common/utils/bcrypt';
 import { logger } from '@core/common/utils/logger';
@@ -7,15 +8,6 @@ import { oidcConfig } from '@core/config/oidc.config';
 import prisma from '@core/database/prisma';
 import type { Request, Response } from 'express';
 import Provider, { type ClientMetadata } from 'oidc-provider';
-
-interface ConsentDetail {
-  scopes?: {
-    new: string[];
-    accepted?: string[];
-    rejected?: string[];
-  };
-  missingOIDCScope?: string[];
-}
 
 export class OidcService {
   private provider: Provider;

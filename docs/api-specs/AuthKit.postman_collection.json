@@ -746,6 +746,183 @@
             },
             "description": "Registers a new OIDC client application and generates credentials."
           }
+        },
+        {
+          "name": "List Audit Logs (Paginated & Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs?limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "audit-logs"],
+              "query": [{ "key": "limit", "value": "100" }]
+            },
+            "description": "Queries security audit logs with cursor-based pagination and filtering by action, status, userId, or date ranges."
+          }
+        },
+        {
+          "name": "Get Audit Log Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "audit-logs", ":id"],
+              "variable": [{ "key": "id", "value": "audit_log_id_here" }]
+            },
+            "description": "Retrieves audit log details by log ID with sensitive metadata fields redacted."
+          }
+        },
+        {
+          "name": "Webhooks & Outbound Events",
+          "description": "Webhook subscription management, HMAC secret rotation, test event delivery, and delivery audit history.",
+          "item": [
+            {
+              "name": "Create Webhook Subscription",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Production Audit Webhook\",\n  \"url\": \"https://example.com/webhooks\",\n  \"description\": \"Subscribes to user lifecycle and security events\",\n  \"events\": [\"user.created\", \"user.login\", \"user.deleted\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks"]
+                },
+                "description": "Creates a new webhook subscription and generates a cryptographically secure signing secret."
+              }
+            },
+            {
+              "name": "List Webhook Subscriptions",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks?limit=10",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks"],
+                  "query": [{ "key": "limit", "value": "10" }]
+                },
+                "description": "Retrieves paginated webhook subscriptions."
+              }
+            },
+            {
+              "name": "Get Webhook Subscription Details",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks", ":id"],
+                  "variable": [{ "key": "id", "value": "subscription_id_here" }]
+                },
+                "description": "Retrieves details of a specific webhook subscription."
+              }
+            },
+            {
+              "name": "Update Webhook Subscription",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Updated Webhook Name\",\n  \"events\": [\"*\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks", ":id"],
+                  "variable": [{ "key": "id", "value": "subscription_id_here" }]
+                },
+                "description": "Updates webhook subscription configuration, URL, events, or status."
+              }
+            },
+            {
+              "name": "Rotate Webhook Signing Secret",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks/:id/rotate-secret",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks", ":id", "rotate-secret"],
+                  "variable": [{ "key": "id", "value": "subscription_id_here" }]
+                },
+                "description": "Rotates signing secret for a webhook subscription with a 24-hour dual-signature grace window."
+              }
+            },
+            {
+              "name": "Dispatch Test Webhook Event",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks/:id/test",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks", ":id", "test"],
+                  "variable": [{ "key": "id", "value": "subscription_id_here" }]
+                },
+                "description": "Triggers a test webhook event delivery attempt to verify receiver endpoint health."
+              }
+            },
+            {
+              "name": "List Webhook Delivery History",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks/:id/deliveries?limit=10",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks", ":id", "deliveries"],
+                  "variable": [{ "key": "id", "value": "subscription_id_here" }],
+                  "query": [{ "key": "limit", "value": "10" }]
+                },
+                "description": "Retrieves paginated delivery attempt history for a webhook subscription."
+              }
+            },
+            {
+              "name": "Get Webhook Delivery Details",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks/:id/deliveries/:deliveryId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks", ":id", "deliveries", ":deliveryId"],
+                  "variable": [
+                    { "key": "id", "value": "subscription_id_here" },
+                    { "key": "deliveryId", "value": "delivery_id_here" }
+                  ]
+                },
+                "description": "Retrieves details of a specific webhook delivery attempt."
+              }
+            },
+            {
+              "name": "Delete Webhook Subscription",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/webhooks/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "webhooks", ":id"],
+                  "variable": [{ "key": "id", "value": "subscription_id_here" }]
+                },
+                "description": "Deletes a webhook subscription and its associated delivery records."
+              }
+            }
+          ]
         }
       ]
     },

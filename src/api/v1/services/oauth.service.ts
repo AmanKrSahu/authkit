@@ -10,14 +10,22 @@ import { setCache } from '@core/common/utils/redis-helpers';
 import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
-import type { EmailService } from '@core/mailers/resend';
+import { EmailService } from '@core/mailers/resend';
 import type { Account, User } from '@prisma/client';
+import { AuditAction, AuditStatus } from '@prisma/client';
+
+import { AuditService } from './audit.service';
 
 export class OAuthService {
   private emailService: EmailService;
+  private auditService: AuditService;
 
-  constructor(emailService: EmailService) {
+  constructor(
+    emailService: EmailService = new EmailService(),
+    auditService: AuditService = new AuditService()
+  ) {
     this.emailService = emailService;
+    this.auditService = auditService;
   }
 
   public async loginWithGoogle(loginData: LoginWithGoogleData) {
@@ -134,6 +142,18 @@ export class OAuthService {
       );
 
       const { ...userInfo } = result.user;
+
+      await this.auditService.log({
+        userId: result.user.id,
+        action: AuditAction.LOGIN,
+        entityType: 'User',
+        entityId: result.user.id,
+        description: 'User logged in via Google OAuth',
+        status: AuditStatus.SUCCESS,
+        ipAddress,
+        userAgent,
+        metadata: { providerId: 'google' },
+      });
 
       return {
         user: sanitizeUser(userInfo),

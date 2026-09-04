@@ -1,6 +1,8 @@
 import { Router } from 'express';
 
-import { adminController } from '../modules/admin.module';
+import { AdminController } from '../controllers/admin.controller';
+
+const adminController = new AdminController();
 
 const adminRoutes = Router();
 
@@ -14,5 +16,8 @@ adminRoutes.delete('/sessions/user/:userId', adminController.revokeSessionsByUse
 adminRoutes.delete('/sessions/:sessionId', adminController.revokeSessionById);
 
 adminRoutes.post('/oidc/clients', adminController.registerOidcClient);
+
+adminRoutes.get('/audit-logs', adminController.getAuditLogs);
+adminRoutes.get('/audit-logs/:id', adminController.getAuditLogById);
 
 export default adminRoutes;

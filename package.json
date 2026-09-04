@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "pnpm build:swagger && tsup --watch --onSuccess \"node dist/api/index.js\"",
     "build": "tsup && pnpm build:swagger",
-    "build:swagger": "tsx scripts/generate-swagger.ts",
+    "build:swagger": "tsx scripts/generate-swagger.ts && prettier --write docs/api-specs/openapi.json --log-level=warn",
     "generate:secrets": "tsx scripts/generate-secrets.ts",
     "start": "node dist/api/index.js",
     "lint": "eslint . --ext .ts,.js",

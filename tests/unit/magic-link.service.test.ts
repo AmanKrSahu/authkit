@@ -6,8 +6,9 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { prismaMock } from '@tests/mocks/prisma';
 import { redisMock } from '@tests/mocks/redis';
-import { MockEmailService } from '@tests/mocks/resend';
 import { MagicLinkService } from '@api/v1/services/magic-link.service';
+import { MockAuditService } from '@tests/mocks/audit';
+import { MockEmailService } from '@tests/mocks/resend';
 import { BadRequestException } from '@core/common/utils/app-error';
 
 // Mock Prisma adapter globally
@@ -17,12 +18,14 @@ vi.mock('@core/database/prisma', () => ({
 
 describe('MagicLinkService Unit Tests', () => {
   let mockEmailService: MockEmailService;
+  let mockAuditService: MockAuditService;
   let magicLinkService: MagicLinkService;
 
   beforeEach(() => {
     redisMock.flushall();
     mockEmailService = new MockEmailService();
-    magicLinkService = new MagicLinkService(mockEmailService as any);
+    mockAuditService = new MockAuditService();
+    magicLinkService = new MagicLinkService(mockEmailService as any, mockAuditService as any);
   });
 
   describe('login', () => {

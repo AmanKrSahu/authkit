@@ -1,6 +1,8 @@
 import { Router } from 'express';
 
-import { oidcController } from '../modules/oidc.module';
+import { OidcController } from '../controllers/oidc.controller';
+
+const oidcController = new OidcController();
 
 const oidcRoutes = Router();
 

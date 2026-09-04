@@ -39,16 +39,23 @@ import { sanitizeUser } from '@core/common/utils/sanitize';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
 import { EmailService } from '@core/mailers/resend';
+import { AuditAction, AuditStatus } from '@prisma/client';
 import qrcode from 'qrcode';
 import speakeasy from 'speakeasy';
 
 import { RATE_LIMIT } from '../../../core/common/constants/rate-limit.constant';
+import { AuditService } from './audit.service';
 
 export class MfaService {
   private emailService: EmailService;
+  private auditService: AuditService;
 
-  constructor() {
-    this.emailService = new EmailService();
+  constructor(
+    emailService: EmailService = new EmailService(),
+    auditService: AuditService = new AuditService()
+  ) {
+    this.emailService = emailService;
+    this.auditService = auditService;
   }
 
   public async generateMFASetup(generateMFASetupData: GenerateMFASetupData) {
@@ -141,6 +148,15 @@ export class MfaService {
 
       await deleteCache(`mfa_setup:${userId}`);
 
+      await this.auditService.log({
+        userId,
+        action: AuditAction.MFA_ENABLE,
+        entityType: 'User',
+        entityId: userId,
+        description: 'MFA enabled for user account',
+        status: AuditStatus.SUCCESS,
+      });
+
       return {
         message: 'MFA setup completed successfully',
         backupCodes, // Return plaintext codes ONCE
@@ -192,6 +208,15 @@ export class MfaService {
           enable2FA: false,
           backupCodes: [], // Clear backup codes
         },
+      });
+
+      await this.auditService.log({
+        userId,
+        action: AuditAction.MFA_DISABLE,
+        entityType: 'User',
+        entityId: userId,
+        description: 'MFA disabled for user account',
+        status: AuditStatus.SUCCESS,
       });
 
       return null;

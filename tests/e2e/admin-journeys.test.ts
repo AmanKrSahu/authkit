@@ -102,6 +102,27 @@ describe('Admin Management E2E User Journeys', () => {
 
         expect([200, 204, 500]).toContain(revokeRes.status);
       }
+
+      // Step 6: Admin lists audit logs and fetches single log details
+      const listAuditLogsRes = await request(app)
+        .get('/api/v1/admin/audit-logs?limit=10')
+        .set('Origin', TEST_ORIGIN)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(listAuditLogsRes.status).toBe(200);
+      expect(listAuditLogsRes.body.data.auditLogs).toBeDefined();
+
+      if (listAuditLogsRes.body.data.auditLogs.length > 0) {
+        const logId = listAuditLogsRes.body.data.auditLogs[0].id;
+        const getAuditLogRes = await request(app)
+          .get(`/api/v1/admin/audit-logs/${logId}`)
+          .set('Origin', TEST_ORIGIN)
+          .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(getAuditLogRes.status).toBe(200);
+        expect(getAuditLogRes.body.data.auditLog).toBeDefined();
+        expect(getAuditLogRes.body.data.auditLog.id).toBe(logId);
+      }
     });
   });
 });
