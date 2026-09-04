@@ -1,9 +1,11 @@
 import { authenticateJWT } from '@core/common/strategies/jwt.strategy';
 import { Router } from 'express';
 
+import { AuthController } from '../controllers/auth.controller';
 import { requireAuthAction } from '../middlewares/csrf.middleware';
 import { authRateLimiter } from '../middlewares/rate-limiter.middleware';
-import { authController } from '../modules/auth.module';
+
+const authController = new AuthController();
 
 const authRoutes = Router();
 

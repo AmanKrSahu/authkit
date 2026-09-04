@@ -5,8 +5,11 @@ import { config } from '@core/config/app.config';
 import redis from '@core/database/redis';
 
 import { app } from './app';
+import { WebhookQueueWorker } from './v1/services/webhook-queue.worker';
 
-app.listen(config.PORT, async () => {
+const webhookWorker = new WebhookQueueWorker();
+
+const server = app.listen(config.PORT, async () => {
   logger.info(`Server listening on port ${config.PORT} in ${config.NODE_ENV}`);
 
   try {
@@ -15,4 +18,17 @@ app.listen(config.PORT, async () => {
   } catch (error) {
     logger.error('Redis connection failed:', error as Error);
   }
+
+  // Start background webhook delivery queue worker
+  webhookWorker.start();
+});
+
+process.on('SIGTERM', () => {
+  webhookWorker.stop();
+  server.close();
+});
+
+process.on('SIGINT', () => {
+  webhookWorker.stop();
+  server.close();
 });

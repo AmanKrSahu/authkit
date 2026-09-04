@@ -12,7 +12,10 @@ export class OAuthController {
   private oauthService: OAuthService;
   private oidcService: OidcService;
 
-  constructor(oauthService: OAuthService, oidcService: OidcService) {
+  constructor(
+    oauthService: OAuthService = new OAuthService(),
+    oidcService: OidcService = new OidcService()
+  ) {
     this.oauthService = oauthService;
     this.oidcService = oidcService;
   }

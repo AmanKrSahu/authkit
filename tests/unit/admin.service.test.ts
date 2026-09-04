@@ -10,6 +10,7 @@ import { AdminService } from '@api/v1/services/admin.service';
 import { NotFoundException } from '@core/common/utils/app-error';
 import { Role } from '@prisma/client';
 import * as redisHelpers from '@core/common/utils/redis-helpers';
+import { MockAuditService } from '@tests/mocks/audit';
 
 // Mock Prisma adapter globally
 vi.mock('@core/database/prisma', () => ({
@@ -22,7 +23,8 @@ vi.mock('@core/database/redis', () => ({
 }));
 
 describe('AdminService Unit Tests', () => {
-  const adminService = new AdminService();
+  const mockAuditService = new MockAuditService();
+  const adminService = new AdminService(mockAuditService as any);
 
   beforeEach(() => {
     redisMock.flushall();

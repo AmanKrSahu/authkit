@@ -9,7 +9,7 @@ import { SessionService } from '../services/session.service';
 export class SessionController {
   private sessionService: SessionService;
 
-  constructor(sessionService: SessionService) {
+  constructor(sessionService: SessionService = new SessionService()) {
     this.sessionService = sessionService;
   }
 

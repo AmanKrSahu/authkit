@@ -10,7 +10,7 @@ The test suite is built on top of a zero-dependency, 100% in-memory testing stac
 
 - **Vitest**: A fast, Next-Gen test runner featuring native ESModules support, TypeScript out-of-the-box, and concurrent execution.
 - **Supertest**: Used to perform HTTP assertions on Express endpoints without spinning up active network port listeners.
-- **In-Memory Prisma Mock (`tests/mocks/prisma.ts`)**: Modular JS `Map` backing store simulating `user`, `session`, `account`, and `oidcClient` models with relation population (`user.accounts`, `session.user`), in-place record mutations, and `$transaction` support.
+- **In-Memory Prisma Mock (`tests/mocks/prisma.ts`)**: Modular JS `Map` backing store simulating `user`, `session`, `account`, `oidcClient`, and `auditLog` models with relation population (`user.accounts`, `session.user`), in-place record mutations, and `$transaction` support.
 - **Polyfilled `ioredis-mock` (`tests/mocks/redis.ts`)**: Simulates Redis in-memory storage with custom command polyfills (`SCRIPT LOAD`, `EVALSHA`, `EVAL`) for full compatibility with `rate-limit-redis`.
 - **Test Execution Reporter (`tests/helpers/test-logger.reporter.ts`)**: Custom Vitest reporter that redirects verbose logs to `logs/%DATE%-tests.log`, keeping terminal output clean.
 
@@ -32,7 +32,7 @@ Our strategy partitions tests into three logical layers executed 100% in-memory 
 
 ### Layer 1: Unit Tests (`tests/unit/`)
 
-- **Scope**: Focuses on business logic in service classes (`UserService`, `AuthService`, `MfaService`, `OidcService`, `OAuthService`, `SessionService`, `MagicLinkService`, `HealthService`).
+- **Scope**: Focuses on business logic in service classes (`UserService`, `AuthService`, `MfaService`, `OidcService`, `OAuthService`, `SessionService`, `MagicLinkService`, `HealthService`, `AuditService`).
 - **Isolation**: High. Executed in-memory using modular Prisma and Redis mocks.
 - **Pre-commit**: Executed on every git commit via Husky hooks.
 
@@ -50,7 +50,7 @@ Our strategy partitions tests into three logical layers executed 100% in-memory 
   3. _MFA Lifecycle_: Password auth $\rightarrow$ enroll TOTP $\rightarrow$ verify TOTP $\rightarrow$ check login challenge $\rightarrow$ use backup code recovery $\rightarrow$ disable MFA.
   4. _OIDC Pipeline_: Register OIDC client $\rightarrow$ authorize PKCE $\rightarrow$ session bridge login $\rightarrow$ consent redirection $\rightarrow$ token exchange $\rightarrow$ UserInfo fetch $\rightarrow$ Introspection $\rightarrow$ Revocation.
   5. _Password Reset & Account Lockout_: Forgot password OTP $\rightarrow$ verify OTP $\rightarrow$ reset password with token $\rightarrow$ verify old password rejection $\rightarrow$ 5 invalid attempts account lockout.
-  6. _Admin Management & Role Escalation_: Admin user query $\rightarrow$ role promotion (USER $\rightarrow$ ADMIN) $\rightarrow$ target session revocation $\rightarrow$ RBAC 403 access control checks.
+  6. _Admin Management & Audit Observability_: Admin user query $\rightarrow$ role promotion (USER $\rightarrow$ ADMIN) $\rightarrow$ target session revocation $\rightarrow$ audit log listing & detail query $\rightarrow$ RBAC 403 access control checks.
 
 ---
 
@@ -67,6 +67,7 @@ tests/
 │   └── middleware.test.ts
 ├── unit/                     # Layer 1: Service Unit Tests
 │   ├── admin.service.test.ts
+│   ├── audit.service.test.ts
 │   ├── auth.service.test.ts
 │   ├── health.service.test.ts
 │   ├── magic-link.service.test.ts

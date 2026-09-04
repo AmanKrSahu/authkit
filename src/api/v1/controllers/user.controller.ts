@@ -9,7 +9,7 @@ import { UserService } from '../services/user.service';
 export class UserController {
   private userService: UserService;
 
-  constructor(userService: UserService) {
+  constructor(userService: UserService = new UserService()) {
     this.userService = userService;
   }
 

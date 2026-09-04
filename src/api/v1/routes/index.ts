@@ -5,7 +5,9 @@ import helmet from 'helmet';
 
 import { oidcRateLimiter } from '../middlewares/rate-limiter.middleware';
 import { roleGuard } from '../middlewares/role.middleware';
-import { oidcService } from '../modules/oidc.module';
+import { OidcService } from '../services/oidc.service';
+
+const oidcService = new OidcService();
 import adminRoutes from './admin.routes';
 import authRoutes from './auth.routes';
 import healthRoutes from './health.routes';
@@ -15,6 +17,7 @@ import oauthRoutes from './oauth.route';
 import oidcRoutes from './oidc.routes';
 import sessionRoutes from './session.routes';
 import userRoutes from './user.routes';
+import webhookRoutes from './webhook.routes';
 
 const router = Router();
 
@@ -48,6 +51,8 @@ router.use('/mfa/', mfaRoutes);
 router.use('/session/', authenticateJWT, sessionRoutes);
 
 router.use('/user/', authenticateJWT, userRoutes);
+
+router.use('/admin/webhooks', webhookRoutes);
 
 router.use('/admin/', authenticateJWT, roleGuard(Role.ADMIN), adminRoutes);
 

@@ -20,7 +20,10 @@ export class MagicLinkController {
   private magicLinkService: MagicLinkService;
   private oidcService: OidcService;
 
-  constructor(magicLinkService: MagicLinkService, oidcService: OidcService) {
+  constructor(
+    magicLinkService: MagicLinkService = new MagicLinkService(),
+    oidcService: OidcService = new OidcService()
+  ) {
     this.magicLinkService = magicLinkService;
     this.oidcService = oidcService;
   }

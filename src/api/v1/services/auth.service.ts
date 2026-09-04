@@ -54,16 +54,22 @@ import { sanitizeUser } from '@core/common/utils/sanitize';
 import { getValidRedirectUrl } from '@core/common/utils/url.util';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
-import type { EmailService } from '@core/mailers/resend';
-import { Prisma } from '@prisma/client';
+import { EmailService } from '@core/mailers/resend';
+import { AuditAction, AuditStatus, Prisma } from '@prisma/client';
 
 import { RATE_LIMIT } from '../../../core/common/constants/rate-limit.constant';
+import { AuditService } from './audit.service';
 
 export class AuthService {
   private emailService: EmailService;
+  private auditService: AuditService;
 
-  constructor(emailService: EmailService) {
+  constructor(
+    emailService: EmailService = new EmailService(),
+    auditService: AuditService = new AuditService()
+  ) {
     this.emailService = emailService;
+    this.auditService = auditService;
   }
 
   public async register(registerData: RegisterData) {
@@ -119,6 +125,16 @@ export class AuthService {
         this.emailService.sendWelcomeEmail(email, name),
       ]);
 
+      await this.auditService.log({
+        userId: newUser.id,
+        action: AuditAction.USER_CREATE,
+        entityType: 'User',
+        entityId: newUser.id,
+        description: 'User registered account',
+        status: AuditStatus.SUCCESS,
+        metadata: { email: newUser.email },
+      });
+
       return {
         user: sanitizeUser(newUser),
       };
@@ -148,6 +164,14 @@ export class AuthService {
 
       // Delete token from Redis
       await deleteCache(`verify_email:${token}`);
+
+      await this.auditService.log({
+        action: AuditAction.USER_UPDATE,
+        entityType: 'User',
+        description: `Email verified for ${email}`,
+        status: AuditStatus.SUCCESS,
+        metadata: { email },
+      });
 
       return null;
     } catch (error) {
@@ -216,6 +240,15 @@ export class AuthService {
 
       if (!user) {
         await incrementLoginFailedAttempts(email);
+        await this.auditService.log({
+          action: AuditAction.FAILED_LOGIN,
+          entityType: 'User',
+          description: 'Failed login attempt: User not found',
+          status: AuditStatus.FAILURE,
+          ipAddress,
+          userAgent,
+          metadata: { email },
+        });
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
@@ -225,6 +258,17 @@ export class AuthService {
       const credentialAccount = user.accounts[0];
       if (!credentialAccount?.password) {
         await incrementLoginFailedAttempts(email);
+        await this.auditService.log({
+          userId: user.id,
+          action: AuditAction.FAILED_LOGIN,
+          entityType: 'User',
+          entityId: user.id,
+          description: 'Failed login attempt: Missing credentials',
+          status: AuditStatus.FAILURE,
+          ipAddress,
+          userAgent,
+          metadata: { email },
+        });
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
@@ -234,6 +278,17 @@ export class AuthService {
       const isValidPassword = await comparePassword(password, credentialAccount.password);
       if (!isValidPassword) {
         await incrementLoginFailedAttempts(email);
+        await this.auditService.log({
+          userId: user.id,
+          action: AuditAction.FAILED_LOGIN,
+          entityType: 'User',
+          entityId: user.id,
+          description: 'Failed login attempt: Invalid password',
+          status: AuditStatus.FAILURE,
+          ipAddress,
+          userAgent,
+          metadata: { email },
+        });
         throw new BadRequestException(
           'Invalid email or password provided',
           ErrorCodeEnum.AUTH_USER_NOT_FOUND
@@ -310,6 +365,17 @@ export class AuthService {
 
       const { ...userInfo } = user;
 
+      await this.auditService.log({
+        userId: user.id,
+        action: AuditAction.LOGIN,
+        entityType: 'User',
+        entityId: user.id,
+        description: 'User logged in successfully',
+        status: AuditStatus.SUCCESS,
+        ipAddress,
+        userAgent,
+      });
+
       return {
         user: sanitizeUser(userInfo),
         mfaRequired: false,
@@ -328,7 +394,7 @@ export class AuthService {
     try {
       const { sessionId } = logoutData;
 
-      await prisma.session.update({
+      const session = await prisma.session.update({
         where: { id: sessionId },
         data: {
           isRevoked: true,
@@ -339,6 +405,15 @@ export class AuthService {
       // Invalidate cache
       await deleteCache(`session:${sessionId}`);
       await deleteCache(`active_refresh_token:${sessionId}`);
+
+      await this.auditService.log({
+        userId: session.userId,
+        action: AuditAction.LOGOUT,
+        entityType: 'Session',
+        entityId: sessionId,
+        description: 'User logged out',
+        status: AuditStatus.SUCCESS,
+      });
 
       return null;
     } catch (error) {
@@ -552,6 +627,15 @@ export class AuthService {
 
       await this.emailService.sendPasswordChangeConfirmation(email, updatedUser.name);
 
+      await this.auditService.log({
+        userId: updatedUser.id,
+        action: AuditAction.PASSWORD_RESET,
+        entityType: 'User',
+        entityId: updatedUser.id,
+        description: `Password reset successfully for ${email}`,
+        status: AuditStatus.SUCCESS,
+      });
+
       return null;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -637,6 +721,15 @@ export class AuthService {
       await deleteCacheMany(cacheKeys);
 
       await this.emailService.sendPasswordChangeConfirmation(user.email, user.name);
+
+      await this.auditService.log({
+        userId,
+        action: AuditAction.PASSWORD_CHANGE,
+        entityType: 'User',
+        entityId: userId,
+        description: 'User password changed successfully',
+        status: AuditStatus.SUCCESS,
+      });
 
       return null;
     } catch (error) {

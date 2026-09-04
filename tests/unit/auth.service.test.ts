@@ -6,6 +6,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { prismaMock } from '@tests/mocks/prisma';
 import { redisMock } from '@tests/mocks/redis';
+import { MockAuditService } from '@tests/mocks/audit';
 import { MockEmailService } from '@tests/mocks/resend';
 import { AuthService } from '@api/v1/services/auth.service';
 import { BadRequestException, UnauthorizedException } from '@core/common/utils/app-error';
@@ -18,16 +19,8 @@ vi.mock('@core/database/prisma', () => ({
 }));
 
 // Mock EmailService globally
-vi.mock('@core/mailers/resend', () => {
-  class MockEmailService {
-    sendMagicLink = vi.fn().mockResolvedValue(null);
-    sendEmailVerification = vi.fn().mockResolvedValue(null);
-    sendWelcomeEmail = vi.fn().mockResolvedValue(null);
-    sendPasswordResetOTP = vi.fn().mockResolvedValue(null);
-    sendPasswordChangeConfirmation = vi.fn().mockResolvedValue(null);
-    sendNewDeviceNotification = vi.fn().mockResolvedValue(null);
-  }
-
+vi.mock('@core/mailers/resend', async () => {
+  const { MockEmailService } = await import('@tests/mocks/resend');
   return {
     EmailService: MockEmailService,
   };
@@ -35,12 +28,14 @@ vi.mock('@core/mailers/resend', () => {
 
 describe('AuthService Unit Tests', () => {
   let mockEmailService: MockEmailService;
+  let mockAuditService: MockAuditService;
   let authService: AuthService;
 
   beforeEach(() => {
     redisMock.flushall();
     mockEmailService = new MockEmailService();
-    authService = new AuthService(mockEmailService as any);
+    mockAuditService = new MockAuditService();
+    authService = new AuthService(mockEmailService as any, mockAuditService as any);
   });
 
   describe('register', () => {

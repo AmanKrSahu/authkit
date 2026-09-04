@@ -20,7 +20,7 @@ import { MfaService } from '../services/mfa.service';
 export class MfaController {
   private mfaService: MfaService;
 
-  constructor(mfaService: MfaService) {
+  constructor(mfaService: MfaService = new MfaService()) {
     this.mfaService = mfaService;
   }
 

@@ -73,7 +73,7 @@ Goal: harden the medium-risk surface, add the safety net (tests, monitoring), an
 | #    | Task                                                                     | Source       | Priority | Complexity | Dependencies | Status   |
 | ---- | ------------------------------------------------------------------------ | ------------ | -------- | ---------- | ------------ | -------- |
 | 2.22 | **Automated test suite** (vitest + supertest + Testcontainers) + CI      | FR-1         | P1       | L          | none         | **Done** |
-| 2.23 | **Audit logs** (`AuditLog` model + `AuditService` + `/admin/audit-logs`) | FR-2         | P1       | M          | none         | Todo     |
+| 2.23 | **Audit logs** (`AuditLog` model + `AuditService` + `/admin/audit-logs`) | FR-2         | P1       | M          | none         | **Done** |
 | 2.24 | **Real dependency health checks** (`/health/live`, `/health/ready`)      | FR-8         | P2       | S          | none         | Todo     |
 | 2.25 | **Observability** (`prom-client` `/metrics`, request IDs, optional OTel) | FR-7         | P2       | M          | none         | Todo     |
 | 2.26 | Reconcile docs vs. code (rate-limit numbers, PPI)                        | FR Section 4 | P3       | S          | none         | Todo     |
@@ -86,18 +86,18 @@ Goal: harden the medium-risk surface, add the safety net (tests, monitoring), an
 
 Goal: reach competitive feature parity and B2B/enterprise readiness. Sequenced so platform primitives precede the features that depend on them.
 
-| #    | Task                                       | Source | Priority | Complexity | Dependencies                | Expected Impact                   | Status |
-| ---- | ------------------------------------------ | ------ | -------- | ---------- | --------------------------- | --------------------------------- | ------ |
-| 3.1  | **Webhooks / event system**                | FR-3   | P1       | L          | 2.23 (shared event catalog) | Platform integrability            | Todo   |
-| 3.2  | **Generated SDK + OpenAPI completeness**   | FR-10  | P2       | M          | 2.22                        | Adoption velocity                 | Todo   |
-| 3.3  | **Passkeys / WebAuthn**                    | FR-4   | P1       | L          | 2.22                        | Phishing-resistant, modern auth   | Todo   |
-| 3.4  | **SMS + pluggable notification providers** | FR-9   | P2       | M          | 2.5 (email refactor)        | Broader MFA/reach                 | Todo   |
-| 3.5  | **Organizations / multi-tenancy**          | FR-5   | P1       | XL         | 2.23, 3.1                   | B2B revenue segment               | Todo   |
-| 3.6  | **Enterprise SSO (SAML/OIDC RP)**          | FR-6   | P2       | XL         | 3.5                         | Enterprise deal-closer            | Todo   |
-| 3.7  | **Admin dashboard (UI)**                   | FR-12  | P2       | XL         | 2.23, 3.1                   | Non-dev usability                 | Todo   |
-| 3.8  | API versioning policy                      | FR-11  | P3       | S          | none                        | Safe evolution                    | Todo   |
-| 3.9  | i18n (emails/errors)                       | FR-13  | P3       | M          | 3.4                         | International reach               | Todo   |
-| 3.10 | Feature flags                              | FR-14  | P3       | M          | 3.5                         | Safe rollouts, per-tenant control | Todo   |
+| #    | Task                                       | Source | Priority | Complexity | Dependencies                | Expected Impact                   | Status   |
+| ---- | ------------------------------------------ | ------ | -------- | ---------- | --------------------------- | --------------------------------- | -------- |
+| 3.1  | **Webhooks / event system**                | FR-3   | P1       | L          | 2.23 (shared event catalog) | Platform integrability            | **Done** |
+| 3.2  | **Generated SDK + OpenAPI completeness**   | FR-10  | P2       | M          | 2.22                        | Adoption velocity                 | Todo     |
+| 3.3  | **Passkeys / WebAuthn**                    | FR-4   | P1       | L          | 2.22                        | Phishing-resistant, modern auth   | Todo     |
+| 3.4  | **SMS + pluggable notification providers** | FR-9   | P2       | M          | 2.5 (email refactor)        | Broader MFA/reach                 | Todo     |
+| 3.5  | **Organizations / multi-tenancy**          | FR-5   | P1       | XL         | 2.23, 3.1                   | B2B revenue segment               | Todo     |
+| 3.6  | **Enterprise SSO (SAML/OIDC RP)**          | FR-6   | P2       | XL         | 3.5                         | Enterprise deal-closer            | Todo     |
+| 3.7  | **Admin dashboard (UI)**                   | FR-12  | P2       | XL         | 2.23, 3.1                   | Non-dev usability                 | Todo     |
+| 3.8  | API versioning policy                      | FR-11  | P3       | S          | none                        | Safe evolution                    | Todo     |
+| 3.9  | i18n (emails/errors)                       | FR-13  | P3       | M          | 3.4                         | International reach               | Todo     |
+| 3.10 | Feature flags                              | FR-14  | P3       | M          | 3.5                         | Safe rollouts, per-tenant control | Todo     |
 
 ---
 

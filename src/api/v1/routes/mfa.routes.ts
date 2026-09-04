@@ -1,8 +1,10 @@
 import { authenticateJWT } from '@core/common/strategies/jwt.strategy';
 import { Router } from 'express';
 
+import { MfaController } from '../controllers/mfa.controller';
 import { authRateLimiter } from '../middlewares/rate-limiter.middleware';
-import { mfaController } from '../modules/mfa.module';
+
+const mfaController = new MfaController();
 
 const mfaRoutes = Router();
 
