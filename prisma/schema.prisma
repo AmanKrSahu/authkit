@@ -144,3 +144,78 @@ model AuditLog {
   @@index([status])
 }
 
+// =====================================================
+// WEBHOOKS / EVENT SYSTEM
+// =====================================================
+
+enum WebhookSubscriptionStatus {
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILURE
+  RETRIES_EXCEEDED
+}
+
+model WebhookSubscription {
+  id                      String                    @id @default(cuid())
+  name                    String
+  url                     String
+  description             String?
+  status                  WebhookSubscriptionStatus @default(ACTIVE)
+  secret                  String
+  previousSecret          String?
+  previousSecretExpiresAt DateTime?
+  events                  String[]
+  createdBy               String?
+  lastDeliveryAt          DateTime?
+  lastSuccessAt           DateTime?
+  failureCount            Int                       @default(0)
+  disabledAt              DateTime?
+  disabledReason          String?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@map("webhook_subscription")
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WebhookDelivery {
+  id                    String                @id @default(cuid())
+  webhookSubscriptionId String
+  subscription          WebhookSubscription   @relation(fields: [webhookSubscriptionId], references: [id], onDelete: Cascade)
+  eventId               String
+  eventType             String
+  eventVersion          Int                   @default(1)
+  attemptNumber         Int                   @default(1)
+  status                WebhookDeliveryStatus @default(PENDING)
+  httpStatus            Int?
+  requestTimestamp      DateTime              @default(now())
+  responseTimestamp     DateTime?
+  duration              Int?
+  nextRetryAt           DateTime?
+  errorCode             String?
+  errorMessage          String?
+  requestPayload        Json?
+  responseBody          String?
+  isTest                Boolean               @default(false)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@map("webhook_delivery")
+  @@index([webhookSubscriptionId])
+  @@index([eventId])
+  @@index([eventType])
+  @@index([status])
+  @@index([nextRetryAt])
+  @@index([createdAt])
+}
+
+

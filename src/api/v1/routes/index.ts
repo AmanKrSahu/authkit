@@ -17,6 +17,7 @@ import oauthRoutes from './oauth.route';
 import oidcRoutes from './oidc.routes';
 import sessionRoutes from './session.routes';
 import userRoutes from './user.routes';
+import webhookRoutes from './webhook.routes';
 
 const router = Router();
 
@@ -50,6 +51,8 @@ router.use('/mfa/', mfaRoutes);
 router.use('/session/', authenticateJWT, sessionRoutes);
 
 router.use('/user/', authenticateJWT, userRoutes);
+
+router.use('/admin/webhooks', webhookRoutes);
 
 router.use('/admin/', authenticateJWT, roleGuard(Role.ADMIN), adminRoutes);
 

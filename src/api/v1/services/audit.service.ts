@@ -3,6 +3,8 @@ import { AppError } from '@core/common/utils/app-error';
 import { paginateWithCursor } from '@core/common/utils/pagination';
 import { HTTPSTATUS } from '@core/config/http.config';
 import prisma from '@core/database/prisma';
+import { eventBus } from '@core/events/event-bus';
+import { AUDIT_ACTION_TO_EVENT_MAP } from '@core/events/event-catalog';
 import type { AuditLog, Prisma } from '@prisma/client';
 
 const SENSITIVE_KEYS = new Set([
@@ -47,7 +49,8 @@ export class AuditService {
       const sanitizedMetadata = data.metadata
         ? (this.sanitizeMetadata(data.metadata) as Prisma.InputJsonValue)
         : undefined;
-      await prisma.auditLog.create({
+
+      const auditLog = await prisma.auditLog.create({
         data: {
           userId: data.userId ?? null,
           action: data.action,
@@ -60,6 +63,21 @@ export class AuditService {
           metadata: sanitizedMetadata ?? undefined,
         },
       });
+
+      const mappedEventType = AUDIT_ACTION_TO_EVENT_MAP[data.action];
+      if (mappedEventType && data.status !== 'FAILURE') {
+        eventBus.publish(
+          mappedEventType,
+          {
+            userId: data.userId ?? null,
+            entityType: data.entityType,
+            entityId: data.entityId ?? null,
+            description: data.description,
+            metadata: sanitizedMetadata ?? null,
+          },
+          `evt_${auditLog.id}`
+        );
+      }
     } catch {
       // Non-blocking log failure; avoid crashing main business transactions
     }

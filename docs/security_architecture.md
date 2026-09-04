@@ -213,3 +213,13 @@ To protect transient credentials, rate limit counters, and session metadata cach
 - **Network Containment**: Redis container ports are not published to the host in development, restricting access to inside the isolated Docker bridge network.
 - **Transport Security (TLS)**: Support for encrypted transport is supported via `REDIS_TLS="true"` settings.
 - **Cache Encryption**: Ephemeral MFA enrollment seeds (`mfa_setup:<userId>`) are encrypted using AES-256-GCM before storage in Redis, preventing plaintext exposures to the internal network.
+
+### 2.17. Webhook & Event System Security Architecture
+
+To provide secure, reliable event notification capabilities to external platforms, AuthKit enforces multi-layered webhook security controls:
+
+- **HMAC-SHA256 Signature Verification**: All outgoing webhook HTTP POST requests are cryptographically signed using HMAC-SHA256 (`t={timestamp},v1={hmac}`). The signature is calculated over `${timestamp}.${raw_http_body}` to guarantee message integrity, authenticity, and replay protection.
+- **Zero-Downtime Secret Rotation**: Rotating a webhook secret (`POST /admin/webhooks/:id/rotate-secret`) retains the previous secret for a 24-hour grace period and appends `v1_old={old_hmac}` to outgoing headers, allowing receivers to rotate secrets without dropping messages.
+- **SSRF (Server-Side Request Forgery) Protection**: Target URLs are strictly validated prior to saving subscriptions and prior to delivery execution (`ssrf.util.ts`). Requests targeting `localhost`, IPv4 loopback/private ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`), IPv6 loopback/private ranges (`::1`, `fe80::/10`), and cloud metadata endpoints (`169.254.169.254`) are blocked.
+- **Data Privacy & Truncation**: Delivery attempt logs truncate external HTTP response bodies to a maximum of 1KB and automatically redact sensitive tokens (`password`, `token`, `secret`, `authorization`, `cookie`) before database storage.
+- **Automated Endpoint Health Management**: Subscriptions incurring 10 consecutive delivery failures are automatically marked `DISABLED` to prevent resource waste and retry loops.

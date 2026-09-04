@@ -503,7 +503,7 @@ _Note: The email address is no longer supplied in the request body; the identity
 }
 ```
 
-### 7.6. List Audit Logs
+### 7.9. List Audit Logs
 
 - **Route**: `GET /admin/audit-logs`
 - **Description**: Returns a paginated list of security audit logs. Supports filtering by `userId`, `action`, `entityType`, `entityId`, `status`, `startDate`, and `endDate`.
@@ -521,10 +521,66 @@ _Note: The email address is no longer supplied in the request body; the identity
 - `startDate` (string, optional): ISO start date timestamp.
 - `endDate` (string, optional): ISO end date timestamp.
 
-### 7.7. Get Audit Log Details
+### 7.10. Get Audit Log Details
 
 - **Route**: `GET /admin/audit-logs/:id`
 - **Description**: Returns full audit log details for a single log entry. Sensitive metadata values are automatically redacted.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+### 7.11. Webhooks & Outbound Events (`/admin/webhooks`)
+
+#### 7.11.1. Create Webhook Subscription
+
+- **Route**: `POST /admin/webhooks`
+- **Description**: Creates a new webhook subscription for external platform integration. Generates a cryptographically secure signing secret (`whsec_...`).
+- **Security**: Admin Only (`Role.ADMIN`)
+
+#### 7.11.2. List Webhook Subscriptions
+
+- **Route**: `GET /admin/webhooks`
+- **Description**: Retrieves a paginated list of webhook subscriptions with optional `status` filtering. Signing secrets are redacted.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+#### 7.11.3. Get Webhook Subscription Details
+
+- **Route**: `GET /admin/webhooks/:id`
+- **Description**: Retrieves details for a specific webhook subscription.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+#### 7.11.4. Update Webhook Subscription
+
+- **Route**: `PATCH /admin/webhooks/:id`
+- **Description**: Updates subscription configuration (name, URL, description, subscribed events, or status). Validates target URLs against SSRF security policies.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+#### 7.11.5. Delete Webhook Subscription
+
+- **Route**: `DELETE /admin/webhooks/:id`
+- **Description**: Permanently deletes a webhook subscription and its associated delivery records.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+#### 7.11.6. Rotate Webhook Signing Secret
+
+- **Route**: `POST /admin/webhooks/:id/rotate-secret`
+- **Description**: Rotates the HMAC signing secret for a webhook endpoint while maintaining a 24-hour dual-signature grace period for zero-downtime rotation.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+#### 7.11.7. Send Test Webhook Event
+
+- **Route**: `POST /admin/webhooks/:id/test`
+- **Description**: Dispatches a signed `webhook.test` event delivery attempt to verify receiver endpoint health.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+#### 7.11.8. Fetch Webhook Delivery History
+
+- **Route**: `GET /admin/webhooks/:id/deliveries`
+- **Description**: Retrieves paginated delivery attempt records for a webhook subscription.
+- **Security**: Admin Only (`Role.ADMIN`)
+
+#### 7.11.9. Fetch Webhook Delivery Details
+
+- **Route**: `GET /admin/webhooks/:id/deliveries/:deliveryId`
+- **Description**: Retrieves detailed information for a specific delivery attempt including request payload, HTTP status, duration, error reason, and redacted response body.
 - **Security**: Admin Only (`Role.ADMIN`)
 
 ---
