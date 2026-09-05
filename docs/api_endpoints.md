@@ -660,3 +660,148 @@ The OIDC endpoints enable this application to act as an Identity Provider (IdP) 
 - **Route**: `GET /oidc/interaction/:uid/abort`
 - **Description**: Abort interaction.
 - **Security**: Public
+
+### 8.13. Generate OIDC WebAuthn Options
+
+- **Route**: `POST /oidc/interaction/:uid/webauthn/options`
+- **Description**: Generates WebAuthn authentication options and random challenge bound to the OIDC interaction session.
+- **Security**: Public
+
+### 8.14. Submit OIDC WebAuthn Assertion
+
+- **Route**: `POST /oidc/interaction/:uid/webauthn/verify`
+- **Description**: Verifies passkey assertion, authenticates user, and completes OIDC login interaction prompt.
+- **Security**: Public
+
+### 8.15. Submit OIDC WebAuthn MFA Assertion
+
+- **Route**: `POST /oidc/interaction/:uid/webauthn/mfa`
+- **Description**: Verifies passkey assertion as a secondary factor during OIDC MFA interaction prompt.
+- **Security**: Public (Requires `mfaLoginToken` cookie)
+
+---
+
+## 9. WebAuthn & Passkeys (`/webauthn`)
+
+Phishing-resistant passwordless authentication and authenticator management conforming to the FIDO2 / WebAuthn standard.
+
+### 9.1. Generate Registration Options
+
+- **Route**: `POST /webauthn/register/options`
+- **Description**: Generates cryptographic options and random challenge for registering a new passkey. Automatically excludes existing user credentials to prevent duplicate registrations.
+- **Security**: Bearer Token (Rate-limited via `authRateLimiter`)
+
+**Request Body**: None
+
+### 9.2. Verify Registration Response
+
+- **Route**: `POST /webauthn/register/verify`
+- **Description**: Verifies authenticator attestation response, checks challenge from Redis, and persists the passkey credential in the database.
+- **Security**: Bearer Token (Rate-limited via `authRateLimiter`)
+
+**Request Body**
+
+```json
+{
+  "name": "MacBook Touch ID",
+  "response": {
+    "id": "credential_id_here",
+    "rawId": "raw_credential_id_here",
+    "response": {
+      "clientDataJSON": "base64url_string",
+      "attestationObject": "base64url_string"
+    },
+    "type": "public-key",
+    "clientExtensionResults": {}
+  }
+}
+```
+
+### 9.3. Generate Authentication Options
+
+- **Route**: `POST /webauthn/authenticate/options`
+- **Description**: Generates assertion options and random challenge for passwordless passkey login. Accepts optional `email` for user-identified login, or supports discoverable passkeys.
+- **Security**: Public (Rate-limited via `authRateLimiter`)
+
+**Request Body**
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+### 9.4. Verify Authentication Assertion
+
+- **Route**: `POST /webauthn/authenticate/verify`
+- **Description**: Verifies passkey assertion, validates signature counter, establishes user session, sets authentication cookies, and issues JWT access tokens.
+- **Security**: Public (Rate-limited via `authRateLimiter`)
+
+**Request Body**
+
+```json
+{
+  "response": {
+    "id": "credential_id_here",
+    "rawId": "raw_credential_id_here",
+    "response": {
+      "clientDataJSON": "base64url_string",
+      "authenticatorData": "base64url_string",
+      "signature": "base64url_string",
+      "userHandle": "optional_user_handle"
+    },
+    "type": "public-key",
+    "clientExtensionResults": {}
+  }
+}
+```
+
+### 9.5. Verify MFA Assertion via Passkey
+
+- **Route**: `POST /webauthn/authenticate/verify-mfa`
+- **Description**: Verifies passkey assertion as a secondary factor during an active MFA login challenge.
+- **Security**: Public (Requires `mfaLoginToken` cookie, rate-limited via `authRateLimiter`)
+
+**Request Body**
+
+```json
+{
+  "response": {
+    "id": "credential_id_here",
+    "rawId": "raw_credential_id_here",
+    "response": {
+      "clientDataJSON": "base64url_string",
+      "authenticatorData": "base64url_string",
+      "signature": "base64url_string"
+    },
+    "type": "public-key",
+    "clientExtensionResults": {}
+  }
+}
+```
+
+### 9.6. List Registered Authenticators
+
+- **Route**: `GET /webauthn/authenticators`
+- **Description**: Returns all passkey authenticators registered to the authenticated user with masked public key data.
+- **Security**: Bearer Token
+
+### 9.7. Update Authenticator Name
+
+- **Route**: `PATCH /webauthn/authenticators/:id`
+- **Description**: Updates the friendly label/name of a registered passkey.
+- **Security**: Bearer Token
+
+**Request Body**
+
+```json
+{
+  "name": "Work Laptop Passkey"
+}
+```
+
+### 9.8. Delete Authenticator
+
+- **Route**: `DELETE /webauthn/authenticators/:id`
+- **Description**: Deletes a registered passkey owned by the authenticated user.
+- **Security**: Bearer Token

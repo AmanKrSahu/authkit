@@ -117,6 +117,7 @@ const eslintConfig = [
       '*.min.js',
       '*.bundle.js',
       'tests/**',
+      'scripts/**',
       'vitest.config.ts',
     ],
   },

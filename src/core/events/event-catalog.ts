@@ -100,6 +100,27 @@ export const EVENT_CATALOG: Record<string, EventDefinition> = {
     description: 'Emitted when a user session is explicitly revoked.',
     isPublishable: true,
   },
+  'webauthn.registered': {
+    type: 'webauthn.registered',
+    version: 1,
+    category: 'auth',
+    description: 'Emitted when a new passkey / WebAuthn authenticator is registered.',
+    isPublishable: true,
+  },
+  'webauthn.authenticated': {
+    type: 'webauthn.authenticated',
+    version: 1,
+    category: 'auth',
+    description: 'Emitted when a user successfully authenticates using a passkey.',
+    isPublishable: true,
+  },
+  'webauthn.deleted': {
+    type: 'webauthn.deleted',
+    version: 1,
+    category: 'auth',
+    description: 'Emitted when a passkey / WebAuthn authenticator is deleted.',
+    isPublishable: true,
+  },
   'webhook.test': {
     type: 'webhook.test',
     version: 1,
@@ -123,6 +144,9 @@ export const AUDIT_ACTION_TO_EVENT_MAP: Record<AuditAction, string> = {
   ROLE_CHANGE: 'role.changed',
   OIDC_CLIENT_CREATE: 'oidc_client.created',
   SESSION_REVOKE: 'session.revoked',
+  WEBAUTHN_REGISTER: 'webauthn.registered',
+  WEBAUTHN_AUTHENTICATE: 'webauthn.authenticated',
+  WEBAUTHN_DELETE: 'webauthn.deleted',
   OTHER: 'system.event',
 };
 

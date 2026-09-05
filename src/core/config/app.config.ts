@@ -54,6 +54,12 @@ const appConfig = () => ({
       }
     })(),
   },
+
+  WEBAUTHN: {
+    RP_NAME: getEnvironment('WEBAUTHN_RP_NAME', 'AuthKit'),
+    RP_ID: getEnvironment('WEBAUTHN_RP_ID', 'localhost'),
+    ORIGIN: getEnvironment('WEBAUTHN_ORIGIN', 'http://localhost:3000'),
+  },
 });
 
 export const config = appConfig();

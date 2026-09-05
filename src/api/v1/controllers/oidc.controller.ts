@@ -2,12 +2,18 @@ import { AuthService } from '@api/v1/services/auth.service';
 import { MfaService } from '@api/v1/services/mfa.service';
 import { OidcService } from '@api/v1/services/oidc.service';
 import { SessionService } from '@api/v1/services/session.service';
+import { WebAuthnService } from '@api/v1/services/webauthn.service';
 import { AppError } from '@core/common/utils/app-error';
 import { setMfaLoginCookie } from '@core/common/utils/cookie';
 import { getClientIP, getUserAgent } from '@core/common/utils/metadata';
 import { loginSchema } from '@core/common/validators/auth.validator';
+import {
+  generateAuthOptionsSchema,
+  verifyAuthenticationSchema,
+} from '@core/common/validators/webauthn.validator';
 import { HTTPSTATUS } from '@core/config/http.config';
 import { AsyncHandler } from '@core/decorator/async-handler.decorator';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { Request, Response } from 'express';
 
 export class OidcController {
@@ -15,17 +21,20 @@ export class OidcController {
   private authService: AuthService;
   private mfaService: MfaService;
   private sessionService: SessionService;
+  private webAuthnService: WebAuthnService;
 
   constructor(
     oidcService: OidcService = new OidcService(),
     authService: AuthService = new AuthService(),
     mfaService: MfaService = new MfaService(),
-    sessionService: SessionService = new SessionService()
+    sessionService: SessionService = new SessionService(),
+    webAuthnService: WebAuthnService = new WebAuthnService()
   ) {
     this.oidcService = oidcService;
     this.authService = authService;
     this.mfaService = mfaService;
     this.sessionService = sessionService;
+    this.webAuthnService = webAuthnService;
   }
 
   @AsyncHandler
@@ -122,6 +131,57 @@ export class OidcController {
 
     const { user } = await this.mfaService.verifyMFAForLogin({
       code,
+      mfaLoginToken,
+      userAgent,
+      ipAddress,
+    });
+
+    await this.oidcService.submitLogin(req, res, user.id);
+  };
+
+  @AsyncHandler
+  public webAuthnOptionsInteraction = async (req: Request, res: Response) => {
+    const body = generateAuthOptionsSchema.parse(req.body ?? {});
+
+    const options = await this.webAuthnService.generateAuthenticationOptions({
+      email: body.email,
+    });
+
+    return res.status(HTTPSTATUS.OK).json({
+      success: true,
+      data: { options },
+    });
+  };
+
+  @AsyncHandler
+  public webAuthnVerifyInteraction = async (req: Request, res: Response) => {
+    const userAgent = getUserAgent(req);
+    const ipAddress = getClientIP(req);
+    const body = verifyAuthenticationSchema.parse(req.body);
+
+    const { user } = await this.webAuthnService.verifyAuthentication({
+      response: body.response as unknown as AuthenticationResponseJSON,
+      userAgent,
+      ipAddress,
+    });
+
+    await this.oidcService.submitLogin(req, res, user.id);
+  };
+
+  @AsyncHandler
+  public webAuthnMfaInteraction = async (req: Request, res: Response) => {
+    const userAgent = getUserAgent(req);
+    const ipAddress = getClientIP(req);
+    const mfaLoginToken = req.cookies.mfaLoginToken;
+
+    if (!mfaLoginToken) {
+      throw new AppError('MFA session expired', HTTPSTATUS.UNAUTHORIZED);
+    }
+
+    const body = verifyAuthenticationSchema.parse(req.body);
+
+    const { user } = await this.webAuthnService.verifyAuthenticationForMfa({
+      response: body.response as unknown as AuthenticationResponseJSON,
       mfaLoginToken,
       userAgent,
       ipAddress,

@@ -16,6 +16,7 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
     auditLog: new Map(),
     webhookSubscription: new Map(),
     webhookDelivery: new Map(),
+    authenticator: new Map(),
   };
 
   const getModelStore = (modelName: string) => {
@@ -29,6 +30,24 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
     if (modelName === 'user') {
       const userAccs = [...getModelStore('account').values()].filter(a => a.userId === record.id);
       copy.accounts = userAccs;
+      const userAuths = [...getModelStore('authenticator').values()].filter(
+        a => a.userId === record.id
+      );
+      copy.authenticators = userAuths;
+    }
+    if (modelName === 'authenticator') {
+      const userRec = getModelStore('user').get(record.userId);
+      if (userRec) {
+        copy.user = {
+          id: userRec.id,
+          email: userRec.email,
+          role: userRec.role,
+          name: userRec.name,
+          enable2FA: userRec.enable2FA ?? false,
+          twoFactorSecret: userRec.twoFactorSecret,
+          backupCodes: userRec.backupCodes || [],
+        };
+      }
     }
     if (modelName === 'session') {
       const userRec = getModelStore('user').get(record.userId);
@@ -131,6 +150,8 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
         if (where.email && item.email === where.email)
           return attachRelations(modelName, item, include);
         if (where.clientId && item.clientId === where.clientId)
+          return attachRelations(modelName, item, include);
+        if (where.credentialId && item.credentialId === where.credentialId)
           return attachRelations(modelName, item, include);
         if (where.sessionToken && item.sessionToken === where.sessionToken)
           return attachRelations(modelName, item, include);
@@ -284,6 +305,7 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
     auditLog: createModelMock('auditLog'),
     webhookSubscription: createModelMock('webhookSubscription'),
     webhookDelivery: createModelMock('webhookDelivery'),
+    authenticator: createModelMock('authenticator'),
     $transaction: async (cb: any) => {
       if (typeof cb === 'function') {
         return await cb(mockClient);
@@ -303,6 +325,12 @@ export const createInMemoryPrismaClient = (): PrismaClient => {
 
 export const prismaMock: DeepMockProxy<PrismaClient> = mockDeep<PrismaClient>();
 
-beforeEach(() => {
-  mockReset(prismaMock);
-});
+if (typeof beforeEach === 'function') {
+  try {
+    beforeEach(() => {
+      mockReset(prismaMock);
+    });
+  } catch {
+    // In standalone runtime, beforeEach is not active
+  }
+}
