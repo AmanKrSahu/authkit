@@ -31,8 +31,9 @@ model User {
   backupCodes     String[] @default([])
 
   // Auth Relations
-  sessions Session[]
-  accounts Account[]
+  sessions       Session[]
+  accounts       Account[]
+  authenticators Authenticator[]
 
   @@map("user")
 }
@@ -115,6 +116,9 @@ enum AuditAction {
   ROLE_CHANGE
   OIDC_CLIENT_CREATE
   SESSION_REVOKE
+  WEBAUTHN_REGISTER
+  WEBAUTHN_AUTHENTICATE
+  WEBAUTHN_DELETE
   OTHER
 }
 
@@ -216,6 +220,33 @@ model WebhookDelivery {
   @@index([status])
   @@index([nextRetryAt])
   @@index([createdAt])
+}
+
+// =====================================================
+// WEBAUTHN / PASSKEYS
+// =====================================================
+
+model Authenticator {
+  id                  String    @id @default(cuid())
+  credentialId        String    @unique
+  credentialPublicKey Bytes
+  counter             BigInt    @default(0)
+  transports          String[]  @default([])
+  name                String?
+  deviceType          String?
+  backedUp            Boolean   @default(false)
+  aaguid              String?
+  lastUsedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("authenticator")
+  @@index([userId])
+  @@index([credentialId])
 }
 
 

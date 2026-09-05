@@ -1,7 +1,6 @@
+import { WebhookService } from '@api/v1/services/webhook.service';
 import prisma from '@core/database/prisma';
 import { WebhookDeliveryStatus } from '@prisma/client';
-
-import { WebhookService } from './webhook.service';
 
 export class WebhookQueueWorker {
   private webhookService: WebhookService;
