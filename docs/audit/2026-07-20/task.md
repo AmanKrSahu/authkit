@@ -90,7 +90,7 @@ Goal: reach competitive feature parity and B2B/enterprise readiness. Sequenced s
 | ---- | ------------------------------------------ | ------ | -------- | ---------- | --------------------------- | --------------------------------- | -------- |
 | 3.1  | **Webhooks / event system**                | FR-3   | P1       | L          | 2.23 (shared event catalog) | Platform integrability            | **Done** |
 | 3.2  | **Generated SDK + OpenAPI completeness**   | FR-10  | P2       | M          | 2.22                        | Adoption velocity                 | Todo     |
-| 3.3  | **Passkeys / WebAuthn**                    | FR-4   | P1       | L          | 2.22                        | Phishing-resistant, modern auth   | Todo     |
+| 3.3  | **Passkeys / WebAuthn**                    | FR-4   | P1       | L          | 2.22                        | Phishing-resistant, modern auth   | **Done** |
 | 3.4  | **SMS + pluggable notification providers** | FR-9   | P2       | M          | 2.5 (email refactor)        | Broader MFA/reach                 | Todo     |
 | 3.5  | **Organizations / multi-tenancy**          | FR-5   | P1       | XL         | 2.23, 3.1                   | B2B revenue segment               | Todo     |
 | 3.6  | **Enterprise SSO (SAML/OIDC RP)**          | FR-6   | P2       | XL         | 3.5                         | Enterprise deal-closer            | Todo     |

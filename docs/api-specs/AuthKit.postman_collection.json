@@ -1151,6 +1151,164 @@
           }
         }
       ]
+    },
+    {
+      "name": "11. Passkeys & WebAuthn",
+      "description": "Passkey registration, passwordless authentication, MFA verification, and authenticator management endpoints.",
+      "item": [
+        {
+          "name": "Generate Registration Options",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/webauthn/register/options",
+              "host": ["{{baseUrl}}"],
+              "path": ["webauthn", "register", "options"]
+            },
+            "description": "Generates cryptographic options and random challenge for registering a new passkey."
+          }
+        },
+        {
+          "name": "Verify Registration Response",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"MacBook Touch ID\",\n  \"response\": {\n    \"id\": \"<credential_id>\",\n    \"rawId\": \"<raw_credential_id>\",\n    \"response\": {\n      \"clientDataJSON\": \"<base64url_encoded_client_data_json>\",\n      \"attestationObject\": \"<base64url_encoded_attestation_object>\"\n    },\n    \"type\": \"public-key\",\n    \"clientExtensionResults\": {},\n    \"authenticatorAttachment\": \"platform\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webauthn/register/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["webauthn", "register", "verify"]
+            },
+            "description": "Verifies authenticator attestation response and persists the passkey credential."
+          }
+        },
+        {
+          "name": "Generate Authentication Options",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webauthn/authenticate/options",
+              "host": ["{{baseUrl}}"],
+              "path": ["webauthn", "authenticate", "options"]
+            },
+            "description": "Generates assertion options and random challenge for passwordless passkey login."
+          }
+        },
+        {
+          "name": "Verify Authentication Assertion (Passwordless Login)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"response\": {\n    \"id\": \"<credential_id>\",\n    \"rawId\": \"<raw_credential_id>\",\n    \"response\": {\n      \"clientDataJSON\": \"<base64url_encoded_client_data_json>\",\n      \"authenticatorData\": \"<base64url_encoded_authenticator_data>\",\n      \"signature\": \"<base64url_encoded_signature>\",\n      \"userHandle\": \"<user_handle_id>\"\n    },\n    \"type\": \"public-key\",\n    \"clientExtensionResults\": {}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webauthn/authenticate/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["webauthn", "authenticate", "verify"]
+            },
+            "description": "Verifies passkey assertion, logs in user, creates session, and issues tokens."
+          }
+        },
+        {
+          "name": "Verify MFA Assertion via Passkey",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"response\": {\n    \"id\": \"<credential_id>\",\n    \"rawId\": \"<raw_credential_id>\",\n    \"response\": {\n      \"clientDataJSON\": \"<base64url_encoded_client_data_json>\",\n      \"authenticatorData\": \"<base64url_encoded_authenticator_data>\",\n      \"signature\": \"<base64url_encoded_signature>\",\n      \"userHandle\": \"<user_handle_id>\"\n    },\n    \"type\": \"public-key\",\n    \"clientExtensionResults\": {}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webauthn/authenticate/verify-mfa",
+              "host": ["{{baseUrl}}"],
+              "path": ["webauthn", "authenticate", "verify-mfa"]
+            },
+            "description": "Verifies passkey assertion as a secondary factor during MFA challenge."
+          }
+        },
+        {
+          "name": "List Registered Passkeys",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/webauthn/authenticators",
+              "host": ["{{baseUrl}}"],
+              "path": ["webauthn", "authenticators"]
+            },
+            "description": "Returns all passkey authenticators registered to the authenticated user."
+          }
+        },
+        {
+          "name": "Update Passkey Name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Primary Work Security Key\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webauthn/authenticators/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["webauthn", "authenticators", ":id"],
+              "variable": [{ "key": "id", "value": "authenticator_id_here" }]
+            },
+            "description": "Updates the friendly name/label of a registered passkey."
+          }
+        },
+        {
+          "name": "Delete Registered Passkey",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Origin", "value": "http://localhost:3000" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/webauthn/authenticators/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["webauthn", "authenticators", ":id"],
+              "variable": [{ "key": "id", "value": "authenticator_id_here" }]
+            },
+            "description": "Deletes a passkey authenticator owned by the authenticated user."
+          }
+        }
+      ]
     }
   ]
 }

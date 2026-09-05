@@ -3,9 +3,9 @@ import 'dotenv/config';
 import { logger } from '@core/common/utils/logger';
 import { config } from '@core/config/app.config';
 import redis from '@core/database/redis';
+import { WebhookQueueWorker } from '@core/workers/webhook-queue.worker';
 
 import { app } from './app';
-import { WebhookQueueWorker } from './v1/services/webhook-queue.worker';
 
 const webhookWorker = new WebhookQueueWorker();
 

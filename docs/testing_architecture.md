@@ -32,13 +32,13 @@ Our strategy partitions tests into three logical layers executed 100% in-memory 
 
 ### Layer 1: Unit Tests (`tests/unit/`)
 
-- **Scope**: Focuses on business logic in service classes (`UserService`, `AuthService`, `MfaService`, `OidcService`, `OAuthService`, `SessionService`, `MagicLinkService`, `HealthService`, `AuditService`).
+- **Scope**: Focuses on business logic in service classes (`UserService`, `AuthService`, `MfaService`, `OidcService`, `OAuthService`, `SessionService`, `MagicLinkService`, `HealthService`, `AuditService`, `WebhookService`, `WebAuthnService`).
 - **Isolation**: High. Executed in-memory using modular Prisma and Redis mocks.
 - **Pre-commit**: Executed on every git commit via Husky hooks.
 
 ### Layer 2: Integration Tests (`tests/integration/`)
 
-- **Scope**: Verifies Express middlewares (CORS, CSRF double-submit tokens, role authorization, rate-limiters, and error sanitizers) and router inputs schema validation.
+- **Scope**: Verifies Express middlewares (CORS, CSRF double-submit tokens, role authorization, rate-limiters, and error sanitizers) and router inputs schema validation for Auth, Admin, Webhook, and WebAuthn endpoints.
 - **Isolation**: Medium. Runs against Express router layers backed by in-memory Prisma and Redis mocks.
 
 ### Layer 3: End-to-End Tests (`tests/e2e/`)
@@ -51,6 +51,8 @@ Our strategy partitions tests into three logical layers executed 100% in-memory 
   4. _OIDC Pipeline_: Register OIDC client $\rightarrow$ authorize PKCE $\rightarrow$ session bridge login $\rightarrow$ consent redirection $\rightarrow$ token exchange $\rightarrow$ UserInfo fetch $\rightarrow$ Introspection $\rightarrow$ Revocation.
   5. _Password Reset & Account Lockout_: Forgot password OTP $\rightarrow$ verify OTP $\rightarrow$ reset password with token $\rightarrow$ verify old password rejection $\rightarrow$ 5 invalid attempts account lockout.
   6. _Admin Management & Audit Observability_: Admin user query $\rightarrow$ role promotion (USER $\rightarrow$ ADMIN) $\rightarrow$ target session revocation $\rightarrow$ audit log listing & detail query $\rightarrow$ RBAC 403 access control checks.
+  7. _Webhook & Event System Lifecycle_: Subscription creation $\rightarrow$ secret rotation with 24h dual-signature grace period $\rightarrow$ ping test $\rightarrow$ event dispatch & delivery log inspection $\rightarrow$ automatic disabling after max consecutive failures.
+  8. _Passkeys & WebAuthn Lifecycle_: Registration challenge $\rightarrow$ passkey registration verification $\rightarrow$ authenticator listing $\rightarrow$ rename authenticator $\rightarrow$ passwordless authentication challenge & verification $\rightarrow$ WebAuthn as MFA factor $\rightarrow$ OIDC interaction passkey verification $\rightarrow$ credential deletion.
 
 ---
 
@@ -58,39 +60,46 @@ Our strategy partitions tests into three logical layers executed 100% in-memory 
 
 ```
 tests/
-├── e2e/                      # Layer 3: E2E User Journeys
+├── e2e/                             # Layer 3: E2E User Journeys
 │   ├── admin-journeys.test.ts
 │   ├── auth-journeys.test.ts
-│   └── oidc-journeys.test.ts
-├── integration/              # Layer 2: Middleware & Endpoint Integrations
+│   ├── oidc-journeys.test.ts
+│   ├── webauthn-journeys.test.ts
+│   └── webhook-live-verification.test.ts
+├── integration/                     # Layer 2: Middleware & Endpoint Integrations
 │   ├── auth-endpoints.test.ts
-│   └── middleware.test.ts
-├── unit/                     # Layer 1: Service Unit Tests
+│   ├── middleware.test.ts
+│   ├── webauthn-endpoints.test.ts
+│   └── webhook-endpoints.test.ts
+├── unit/                            # Layer 1: Service Unit Tests
 │   ├── admin.service.test.ts
 │   ├── audit.service.test.ts
 │   ├── auth.service.test.ts
 │   ├── health.service.test.ts
 │   ├── magic-link.service.test.ts
+│   ├── mfa.service.test.ts
 │   ├── oauth.service.test.ts
 │   ├── oidc.service.test.ts
 │   ├── session.service.test.ts
-│   └── user.service.test.ts
-├── factories/                # Data factories for generating test entities
+│   ├── user.service.test.ts
+│   ├── webauthn.service.test.ts
+│   └── webhook.service.test.ts
+├── factories/                       # Data factories for generating test entities
 │   ├── oidc-client.factory.ts
 │   ├── session.factory.ts
 │   └── user.factory.ts
-├── fixtures/                 # Static data fixtures
+├── fixtures/                        # Static data fixtures
 │   └── auth.fixture.ts
-├── helpers/                  # Container, DB, Redis, and Request helpers
+├── helpers/                         # Container, DB, Redis, and Request helpers
 │   ├── container.helper.ts
 │   ├── db.helper.ts
 │   ├── redis.helper.ts
 │   ├── request.helper.ts
 │   └── test-logger.reporter.ts
-└── mocks/                    # Dedicated in-memory mock client modules
-    ├── prisma.ts             # In-memory Prisma store & $transaction factory
-    ├── redis.ts              # Polyfilled ioredis-mock factory
-    └── resend.ts             # Resend email mailer spy
+└── mocks/                           # Dedicated in-memory mock client modules
+    ├── prisma.ts                    # In-memory Prisma store & $transaction factory
+    ├── redis.ts                     # Polyfilled ioredis-mock factory
+    └── resend.ts                    # Resend email mailer spy
 ```
 
 ---

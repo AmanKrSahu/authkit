@@ -183,36 +183,28 @@ To ensure continuous system availability under high concurrency and prevent casc
 - **Redis Client Resilience**: The cache client operates with exponential connection retry backoffs and explicit connection timeouts, preventing process crashes on temporary network drops.
 - **Batch Cache Invalidation**: Multi-key cache revocations are executed in a single network round-trip batch command (`deleteCacheMany`), neutralizing performance degradation during mass logouts.
 
-### 2.16. SOC2 & NIST SP 800-92 Compliance Audit Logging
+### 2.16. SOC2 & NIST SP 800-92 Compliance Audit Logging & AuditService Architecture
 
-To satisfy enterprise compliance requirements (SOC2 Type II, HIPAA, NIST SP 800-92), AuthKit maintains an append-only security audit log system:
+To satisfy strict enterprise compliance frameworks (SOC2 Type II, HIPAA, NIST SP 800-92), AuthKit maintains an immutable, append-only security audit log system managed centrally by `AuditService`:
 
-- **Append-Only & Read-Only Policy**: Audit log records are strictly append-only. There are zero API endpoints or service methods available to update, modify, or delete audit records through normal application interfaces.
-- **Recursive Metadata Secret Redaction**: Before persisting audit log metadata to PostgreSQL, `AuditService.sanitizeMetadata()` recursively scans all nested JSON fields and automatically redacts sensitive keys (`password`, `secret`, `token`, `accessToken`, `refreshToken`, `apiKey`, `backupCodes`, `authorization`, `cookie`) with `[REDACTED]`.
-- **RBAC Gated Access**: Access to audit logs (`GET /admin/audit-logs` and `GET /admin/audit-logs/:id`) is strictly restricted to authenticated users with `Role.ADMIN`.
-- **Non-Blocking Resilience**: Audit log logging operates asynchronously with isolated error catching, ensuring that database or logging glitches never block or crash primary user authentication transactions.
-
----
-
-## 3. The Role of Redis
-
-Redis acts as a high-performance "Speed Layer" that facilitates security features without compromising latency.
-
-| Feature              | How Redis is Used                                                                                                                                                     | Benefit                                                                                               |
-| :------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
-| **Session Caching**  | Stores sanitized session and user profiles (excluding credential hashes/TOTP secrets). The JWT Strategy validates session expiry and revocation status on cache hits. | Drastic reduction in DB load; sub-millisecond authentication checks with real-time revocation checks. |
-| **Rate Limiting**    | Stores counters and expiry times for IP addresses.                                                                                                                    | Atomic increments prevent race conditions; extremely fast.                                            |
-| **Login Lockout**    | Tracks per-account failure counters (`failed_attempts:<email>`) and lockout flags (`lockout:<email>`) with a 15-minute sliding TTL.                                   | Neutralizes password brute-forcing across rotating IPs.                                               |
-| **Ephemeral Tokens** | Stores short-lived tokens: <br> - Encrypted MFA Setup Secrets (using AES-256-GCM) <br> - Email Verification Tokens <br> - Password Reset OTPs                         | Automatic expiration (TTL) handles cleanup; data is never persisted to disk (DB) until verified.      |
-
-### 3.1. Redis Security Configuration
-
-To protect transient credentials, rate limit counters, and session metadata cached in Redis:
-
-- **Authentication**: Redis requires a secure password configured via `REDIS_PASSWORD` (loaded dynamically into the `ioredis` client and enforced in the server container via `--requirepass`).
-- **Network Containment**: Redis container ports are not published to the host in development, restricting access to inside the isolated Docker bridge network.
-- **Transport Security (TLS)**: Support for encrypted transport is supported via `REDIS_TLS="true"` settings.
-- **Cache Encryption**: Ephemeral MFA enrollment seeds (`mfa_setup:<userId>`) are encrypted using AES-256-GCM before storage in Redis, preventing plaintext exposures to the internal network.
+- **Immutable & Append-Only Record Architecture**: Audit logs are recorded in the PostgreSQL `AuditLog` table with strict append-only constraints. The application exposes zero update or delete endpoints/methods for audit records.
+- **Structured Observability Schema**: Each audit entry captures comprehensive forensic context:
+  - `id`: Unique identifier (UUID).
+  - `userId`: Optional actor ID performing the action (or `null` for unauthenticated attempts).
+  - `action`: Strongly typed `AuditAction` enum (e.g. `REGISTER`, `LOGIN`, `FAILED_LOGIN`, `LOGOUT`, `PASSWORD_RESET`, `ROLE_CHANGE`, `SESSION_REVOKE`, `WEBHOOK_CREATE`, `WEBAUTHN_REGISTER`, `WEBAUTHN_AUTHENTICATE`, etc.).
+  - `entityType` & `entityId`: Target resource affected (e.g. `User`, `Session`, `WebhookSubscription`, `Authenticator`).
+  - `description`: Human-readable summary of the security event.
+  - `status`: `AuditStatus` enum (`SUCCESS` or `FAILURE`).
+  - `ipAddress` & `userAgent`: Client network context and device headers.
+  - `metadata`: Arbitrary JSON payload containing contextual parameters.
+  - `createdAt`: High-precision timestamp.
+- **Deep Recursive Metadata Secret Redaction**: Before persisting audit metadata to the database, `AuditService.sanitizeMetadata()` recursively traverses all nested JSON keys, arrays, and objects, automatically replacing sensitive fields (`password`, `secret`, `token`, `accessToken`, `refreshToken`, `apiKey`, `backupCodes`, `authorization`, `cookie`, `credentialPublicKey`, `twoFactorSecret`) with `[REDACTED]`.
+- **EventBus & Outbound Webhook Bridge**: `AuditService` serves as the primary emitter for domain events. Upon successfully recording an audit event, it maps the `AuditAction` via `AUDIT_ACTION_TO_EVENT_MAP` (defined in the Shared Event Catalog) and dispatches standardized event envelopes (`id`, `event`, `timestamp`, `actor`, `target`, `data`) through the `EventBus` to notify external webhook subscribers in real time.
+- **Non-Blocking Resilience**: Audit operations execute asynchronously with isolated try-catch error handling. Failures in audit database writes are securely routed to Winston application logs without crashing or blocking the initiating authentication transaction.
+- **RBAC-Gated Admin Query Endpoints**: Audit logs can be queried by authorized administrators via:
+  - `GET /admin/audit-logs`: Paginated listing with filtering by `userId`, `action`, `status`, `from` date, and `to` date.
+  - `GET /admin/audit-logs/:id`: Individual audit record inspection.
+    Access is strictly restricted to authenticated users with `Role.ADMIN`, returning `403 Forbidden` for standard users.
 
 ### 2.17. Webhook & Event System Security Architecture
 
@@ -223,3 +215,38 @@ To provide secure, reliable event notification capabilities to external platform
 - **SSRF (Server-Side Request Forgery) Protection**: Target URLs are strictly validated prior to saving subscriptions and prior to delivery execution (`ssrf.util.ts`). Requests targeting `localhost`, IPv4 loopback/private ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`), IPv6 loopback/private ranges (`::1`, `fe80::/10`), and cloud metadata endpoints (`169.254.169.254`) are blocked.
 - **Data Privacy & Truncation**: Delivery attempt logs truncate external HTTP response bodies to a maximum of 1KB and automatically redact sensitive tokens (`password`, `token`, `secret`, `authorization`, `cookie`) before database storage.
 - **Automated Endpoint Health Management**: Subscriptions incurring 10 consecutive delivery failures are automatically marked `DISABLED` to prevent resource waste and retry loops.
+
+### 2.18. Passkeys & WebAuthn (FIDO2) Architecture
+
+AuthKit implements passwordless authentication and multi-factor authentication using the W3C WebAuthn / FIDO2 standard powered by `@simplewebauthn/server`:
+
+- **Phishing-Resistant Cryptographic Verification**: Authentication challenges use asymmetric public-key cryptography. Signatures are verified against the client's `origin` and `rpId` (Relying Party ID), preventing DNS spoofing and phishing replay attacks.
+- **Lossless Binary Credential Storage**: Public keys (`credentialPublicKey`) and credential IDs (`credentialId`) are stored losslessly in PostgreSQL as binary `Bytes` and base64url representations.
+- **Cloning Detection (Counter Tracking)**: Authenticator counters are tracked as 64-bit `BigInt` values (`counter`) and incremented upon each authentication ceremony. If a presented counter is less than or equal to the stored value (for hardware authenticators reporting non-zero counters), cloning is detected and authentication fails.
+- **Single-Use Ephemeral Challenges in Redis**: WebAuthn registration and authentication challenges are stored in Redis (`webauthn:reg_challenge:<userId>` and `webauthn:auth_challenge:<challengeKey>`) with a strict 5-minute TTL. Challenges are atomically fetched and deleted on verification, preventing replay attacks.
+- **User Verification & Transport Policies**: Registration supports configurable `residentKey: 'preferred'` (discoverable credentials / passkeys) and `userVerification: 'preferred'`.
+- **Dual Flow Support (Primary Auth + MFA Factor)**: WebAuthn authenticators can serve as primary passwordless authentication credentials or as a strong, hardware-backed second factor during multi-factor authentication and OIDC interaction ceremonies.
+- **Identity Ownership Enforcement**: Management endpoints (`DELETE /webauthn/authenticators/:id`, `PATCH /webauthn/authenticators/:id`) strictly enforce ownership checks to ensure users can only modify or delete their own registered authenticators.
+
+---
+
+## 3. The Role of Redis
+
+Redis acts as a high-performance "Speed Layer" that facilitates security features without compromising latency.
+
+| Feature                      | How Redis is Used                                                                                                                                                     | Benefit                                                                                               |
+| :--------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
+| **Session Caching**          | Stores sanitized session and user profiles (excluding credential hashes/TOTP secrets). The JWT Strategy validates session expiry and revocation status on cache hits. | Drastic reduction in DB load; sub-millisecond authentication checks with real-time revocation checks. |
+| **Rate Limiting**            | Stores counters and expiry times for IP addresses.                                                                                                                    | Atomic increments prevent race conditions; extremely fast.                                            |
+| **Login Lockout**            | Tracks per-account failure counters (`failed_attempts:<email>`) and lockout flags (`lockout:<email>`) with a 15-minute sliding TTL.                                   | Neutralizes password brute-forcing across rotating IPs.                                               |
+| **Ephemeral Tokens**         | Stores short-lived tokens: <br> - Encrypted MFA Setup Secrets (using AES-256-GCM) <br> - Email Verification Tokens <br> - Password Reset OTPs                         | Automatic expiration (TTL) handles cleanup; data is never persisted to disk (DB) until verified.      |
+| **WebAuthn Challenge Cache** | Stores short-lived registration and authentication ceremony challenges with a 5-minute TTL.                                                                           | Atomic single-use validation eliminates replay attacks without database write overhead.               |
+
+### 3.1. Redis Security Configuration
+
+To protect transient credentials, rate limit counters, and session metadata cached in Redis:
+
+- **Authentication**: Redis requires a secure password configured via `REDIS_PASSWORD` (loaded dynamically into the `ioredis` client and enforced in the server container via `--requirepass`).
+- **Network Containment**: Redis container ports are not published to the host in development, restricting access to inside the isolated Docker bridge network.
+- **Transport Security (TLS)**: Support for encrypted transport is supported via `REDIS_TLS="true"` settings.
+- **Cache Encryption**: Ephemeral MFA enrollment seeds (`mfa_setup:<userId>`) are encrypted using AES-256-GCM before storage in Redis, preventing plaintext exposures to the internal network.

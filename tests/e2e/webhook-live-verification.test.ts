@@ -6,7 +6,7 @@ import { Role } from '@prisma/client';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { WebhookQueueWorker } from '@api/v1/services/webhook-queue.worker';
+import { WebhookQueueWorker } from '@core/workers/webhook-queue.worker';
 import { createUserFactory } from '@tests/factories/user.factory';
 import { startTestContainer, stopTestContainer } from '@tests/helpers/container.helper';
 import { cleanDb } from '@tests/helpers/db.helper';

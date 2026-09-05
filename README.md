@@ -164,6 +164,7 @@ The collection is structured logically into workflow folders matching realistic 
 8. `08. Webhook & Event System` (Create Webhook Subscription, List Subscriptions, Get Details, Update Config, Rotate Signing Secret, Trigger Test Delivery, List Deliveries, Get Delivery Details)
 9. `09. OpenID Connect (OIDC 1.0) Provider Protocols` (Discovery, JWKS Keys, Authorization Code PKCE, Token Exchange, UserInfo, Introspection, Revocation)
 10. `10. OIDC Custom Interaction Flows` (Interaction Prompt Details, Session Bridge Check, Submit Login/MFA/Consent, Abort Interaction)
+11. `11. Passkeys & WebAuthn` (Registration Options, Attestation Verification, Authentication Options, Passwordless Assertion Login, MFA Assertion, Authenticator Management)
 
 **Features**:
 
@@ -195,6 +196,7 @@ The infrastructure adheres to a **Modular Layered Architecture (MLA)** utilizing
 - **Enhanced Ingress Rate-Limiting**: Enforces strict route-level rate limiting across login, register, magic-link, and MFA endpoints, plus user-bound attempt budgets to prevent distributed bypasses.
 - **Hardened Caching Layer**: Implements full Redis password authentication, production TLS transport options, loopback port containment, and AES-256-GCM encryption of cached TOTP setup secrets.
 - **Scale-Resilient Cursor Pagination**: Employs an index-optimized cursor pager for session and user collections, preventing memory bloat and duplicate entries under real-time mutations. It concurrently calculates total record sets and populates CORS-exposed metadata headers (`X-Total-Count` / `X-Page-Count`).
+- **Phishing-Resistant Passkeys / WebAuthn**: FIDO2-compliant passwordless authentication and secondary MFA factor using `@simplewebauthn/server` with single-use Redis challenge caching, lossless binary public key storage, and user authenticator management.
 
 👉 Full Documentation: [**Detailed Security Architecture**](./docs/security_architecture.md)
 
@@ -221,18 +223,20 @@ AuthKit functions as a centralized IdP, supporting dynamic client registration a
 
 ## 7. API Inventory & Endpoint Specifications
 
-| Domain             | Functional Scope            | Protocol / Logic       | Details                                               |
-| :----------------- | :-------------------------- | :--------------------- | :---------------------------------------------------- |
-| **Identity (IdP)** | Auth, Token, JWKS, UserInfo | OIDC 1.0 / OAuth 2.0   | Centralized SSO & Third-party provisioning            |
-| **Auth**           | Registration, Login, Logout | Password-based Auth    | Secure credential handling & session initiation       |
-| **MFA**            | TOTP Setup & Verification   | RFC 6238 (speakeasy)   | Multi-factor secondary verification layer             |
-| **OAuth**          | Google Social Integration   | OAuth 2.0 Protocol     | Third-party identity federation                       |
-| **Magic Link**     | Passwordless Auth           | Token-based / SMTP     | Email-verified session provisioning                   |
-| **User/Session**   | Profile & Active State Mgmt | REST / Redis-backed    | Real-time session tracking & profile modification     |
-| **Admin**          | Moderation & Client Ops     | Restricted REST / RBAC | User lifecycle moderation & Client Registration       |
-| **Audit Logs**     | Compliance & Observability  | SOC2 / NIST SP 800-92  | Append-only security audit trail & filterable queries |
-| **System**         | Health & Dependency Checks  | Heartbeat Logic        | Multi-component dependency status monitoring          |
-| **Metadata**       | Discovery, Key Exposition   | RFC 8414               | Automated client configuration (Well-known)           |
+| Domain                  | Functional Scope            | Protocol / Logic       | Details                                               |
+| :---------------------- | :-------------------------- | :--------------------- | :---------------------------------------------------- |
+| **Identity (IdP)**      | Auth, Token, JWKS, UserInfo | OIDC 1.0 / OAuth 2.0   | Centralized SSO & Third-party provisioning            |
+| **Auth**                | Registration, Login, Logout | Password-based Auth    | Secure credential handling & session initiation       |
+| **Passkeys & WebAuthn** | Passwordless Auth & Factors | FIDO2 / WebAuthn       | Biometric & Hardware Security Key Authentication      |
+| **MFA**                 | TOTP Setup & Verification   | RFC 6238 (speakeasy)   | Multi-factor secondary verification layer             |
+| **OAuth**               | Google Social Integration   | OAuth 2.0 Protocol     | Third-party identity federation                       |
+| **Magic Link**          | Passwordless Auth           | Token-based / SMTP     | Email-verified session provisioning                   |
+| **User/Session**        | Profile & Active State Mgmt | REST / Redis-backed    | Real-time session tracking & profile modification     |
+| **Admin**               | Moderation & Client Ops     | Restricted REST / RBAC | User lifecycle moderation & Client Registration       |
+| **Audit Logs**          | Compliance & Observability  | SOC2 / NIST SP 800-92  | Append-only security audit trail & filterable queries |
+| **Webhooks**            | Outbound Event System       | HMAC-SHA256 / REST     | Event subscriptions, retry queue & delivery audits    |
+| **System**              | Health & Dependency Checks  | Heartbeat Logic        | Multi-component dependency status monitoring          |
+| **Metadata**            | Discovery, Key Exposition   | RFC 8414               | Automated client configuration (Well-known)           |
 
 Comprehensive specifications including request/response schemas are accessible via the Swagger portal (in Dev/Staging) or via the [**Postman Collection**](./docs/api-specs/AuthKit.postman_collection.json).
 
